@@ -131,13 +131,25 @@ def parse_args() -> argparse.Namespace:
                    help="Where to write the PEFT-format adapter + submission.zip.")
     p.add_argument("--skip-zip", action="store_true",
                    help="Skip writing submission.zip (write only the adapter files).")
+    p.add_argument("--force", action="store_true",
+                   help="Remove --output-dir if it already exists. tinker-cookbook "
+                        "refuses to overwrite, so re-runs need this.")
     return p.parse_args()
 
 
 def main() -> None:
+    import shutil
     args = parse_args()
     output_dir = Path(args.output_dir).absolute()
-    output_dir.mkdir(parents=True, exist_ok=True)
+    if output_dir.exists():
+        if not args.force:
+            raise SystemExit(
+                f"--output-dir already exists: {output_dir}\n"
+                f"Re-run with --force to remove it, or pick a different path."
+            )
+        print(f"--force set; removing existing {output_dir}")
+        shutil.rmtree(output_dir)
+    output_dir.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"Base model:     {args.base_model}")
     print(f"Source adapter: {args.adapter_path}")

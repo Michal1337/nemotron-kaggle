@@ -6,7 +6,7 @@ See [competition-notes.md](competition-notes.md) for the full landscape: leaderb
 
 ## What this repo does
 
-Three paths, all driven by [setup.sh](setup.sh):
+Three paths:
 
 | Mode | Time | GPU? | Output |
 |---|---|---|---|
@@ -20,40 +20,62 @@ Mode A is the floor every other run should beat. Mode B is the cheapest probe pa
 
 ```bash
 git clone <this-repo> && cd nemotron-kaggle
-source setup.sh
-setup_env             # creates .venv with torch 2.10 + cu128 + prebuilt mamba_ssm/causal_conv1d wheels
-setup_kaggle_token    # checks ~/.kaggle/kaggle.json exists and is 0600
+python3.12 -m venv .venv && source .venv/bin/activate
+pip install -U pip wheel setuptools packaging
+pip install "torch==2.10.0" --index-url https://download.pytorch.org/whl/cu128
+pip install \
+  https://github.com/Dao-AILab/causal-conv1d/releases/download/v1.6.2.post1/causal_conv1d-1.6.2.post1+cu12torch2.10cxx11abiTRUE-cp312-cp312-linux_x86_64.whl \
+  https://github.com/state-spaces/mamba/releases/download/v2.3.2.post1/mamba_ssm-2.3.2.post1+cu12torch2.10cxx11abiTRUE-cp312-cp312-linux_x86_64.whl
+pip install -r requirements.txt
+# For Mode C only:
+pip install --no-deps "unsloth_zoo[base] @ git+https://github.com/unslothai/unsloth-zoo"
+pip install --no-deps "unsloth[base] @ git+https://github.com/unslothai/unsloth"
 
-# Mode A — 0.86 in 5 min
-download_kien_adapter
-mode_a_lock_086
+# Downloads
+mkdir -p adapters data models runs
+kaggle competitions download -c nvidia-nemotron-model-reasoning-challenge -p data
+python -m zipfile -e data/nvidia-nemotron-model-reasoning-challenge.zip data/
 
-# Mode B — try huikang v27
-download_base_model            # ~60 GB
-download_huikang_adapter 27    # ~1.5 GB
-mode_b_convert_huikang 27
+kaggle models instances versions download kienngx/nemotron-nano-30b-trained/triton/tinker-adapter/1 -p adapters/kien-tinker --untar
+kaggle models instances versions download huikang/nemotron-adapter/Transformers/default/20 -p adapters/huikang-v20 --untar
+kaggle models instances versions download huikang/nemotron-adapter/Transformers/default/27 -p adapters/huikang-v27 --untar
 
-# Mode C — full retrain
-download_training_corpus
-mode_c_train
+# Mode A — package kien's adapter at root, ready to submit (no GPU)
+mkdir -p runs/lock-086
+cp adapters/kien-tinker/adapter_config.json adapters/kien-tinker/adapter_model.safetensors runs/lock-086/
+(cd runs/lock-086 && python -m zipfile -c submission.zip adapter_config.json adapter_model.safetensors)
+python src/verify_adapter.py --adapter runs/lock-086
+
+# Mode B — convert huikang v27 (uses base model at the cluster path)
+python src/convert_tinker_adapter.py \
+  --base-model /mnt/evafs/groups/re-com/mgromadzki/llms/nemotron-3-nano-30b-a3b-bf16 \
+  --adapter-path adapters/huikang-v27 \
+  --output-dir runs/huikang-v27-peft
+python src/verify_adapter.py --adapter runs/huikang-v27-peft --reference adapters/kien-tinker
+
+# Mode C — full retrain (needs huikang corpus dataset; check current slug with `kaggle datasets list --user huikang`)
+python src/train_huikang_style.py \
+  --model-path /mnt/evafs/groups/re-com/mgromadzki/llms/nemotron-3-nano-30b-a3b-bf16 \
+  --corpus-path data/huikang-corpus/nemotron-master/training/sft/04-08-16-14/tokens \
+  --train-order data/huikang-corpus/nemotron-master/training/sft/04-08-16-14/logprobs/index.jsonl \
+  --train-csv data/train.csv \
+  --output-dir runs/huikang-repro \
+  --num-steps 1000 --batch-size 32 --micro-batch-size 4 --learning-rate 2e-4 \
+  --zip-submission
 ```
-
-Each command is a shell function defined in [setup.sh](setup.sh); read it for the exact `kaggle`/`python` call it wraps.
 
 ## Files
 
 | Path | Purpose |
 |---|---|
-| [setup.sh](setup.sh) | Env setup + downloads + Mode A/B/C orchestration |
 | [requirements.txt](requirements.txt) | Pinned to torch 2.10 / cu128 / Python 3.12 (only combo with prebuilt CUDA-kernel wheels) |
-| [convert_tinker_adapter.py](convert_tinker_adapter.py) | huikang raw → PEFT format via `tinker-cookbook` + asalhi's rank-32 SVD patch |
-| [verify_adapter.py](verify_adapter.py) | Header-only structural audit — checks any adapter against the kien 0.86 fingerprint without loading the model |
-| [train_huikang_style.py](train_huikang_style.py) | Full retrain pipeline: Unsloth + Cut Cross-Entropy + Mamba fast path + MoE expert weight tying + fp32 LoRA/router |
-| [train_baseline.py](train_baseline.py) | Older naive baseline (raw answer column, no CoT). Caps ~0.67. Kept for reference. |
-| [adapter_config.json](adapter_config.json) | Reference LoRA config — the canonical 0.86 shape (rank 32, alpha 32, `all-linear`, dropout 0) |
+| [src/convert_tinker_adapter.py](src/convert_tinker_adapter.py) | huikang raw → PEFT format via `tinker-cookbook` + asalhi's rank-32 SVD patch |
+| [src/verify_adapter.py](src/verify_adapter.py) | Header-only structural audit — checks any adapter against the kien 0.86 fingerprint without loading the model |
+| [src/train_huikang_style.py](src/train_huikang_style.py) | Full retrain pipeline: Unsloth + Cut Cross-Entropy + Mamba fast path + MoE expert weight tying + fp32 LoRA/router |
+| [src/train_baseline.py](src/train_baseline.py) | Older naive baseline (raw answer column, no CoT). Caps ~0.67. Kept for reference. |
 | [competition-notes.md](competition-notes.md) | Full competition notes — start here for context |
 
-`data/`, `models/`, `adapters/`, `runs/`, `src/` are gitignored and populated by the download functions in [setup.sh](setup.sh).
+`data/`, `models/`, `adapters/`, `runs/` are gitignored and populated by the download commands below.
 
 ## Submitting
 
