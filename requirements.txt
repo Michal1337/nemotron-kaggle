@@ -1,13 +1,40 @@
-# Install torch separately for your CUDA version, then `pip install -r requirements.txt`
-# e.g. CUDA 12.x:
-#   pip install torch --index-url https://download.pytorch.org/whl/cu124
-torch>=2.4
-transformers>=4.56.2
+# Tested combo used by huikang's 0.85+ pipeline (suryamilenial reproduction):
+#   torch 2.10.0 + cu128 + Python 3.12 + sm_120 (Blackwell RTX PRO 6000)
+#
+# Install torch first matching your CUDA, then `pip install -r requirements.txt`.
+#   pip install "torch==2.10.0" --index-url https://download.pytorch.org/whl/cu128
+#
+# Then install the CUDA-kernel deps from prebuilt wheels (avoid local nvcc compile):
+#   pip install \
+#     https://github.com/Dao-AILab/causal-conv1d/releases/download/v1.6.2.post1/causal_conv1d-1.6.2.post1+cu12torch2.10cxx11abiTRUE-cp312-cp312-linux_x86_64.whl \
+#     https://github.com/state-spaces/mamba/releases/download/v2.3.2.post1/mamba_ssm-2.3.2.post1+cu12torch2.10cxx11abiTRUE-cp312-cp312-linux_x86_64.whl
+
+torch==2.10.0
+
+# Core HF / PEFT stack (versions match suryamilenial Modal image)
+transformers>=4.57.3
 peft>=0.15.0
 trl>=0.18.0
 datasets>=2.21
 accelerate>=1.0
 safetensors>=0.5
-polars>=1.0
-sentencepiece
+huggingface_hub>=0.36.2
+hf-transfer>=0.1.9
+
+# Training-side optimizations huikang/suryamilenial rely on
+cut-cross-entropy>=25.1.0
 einops
+sentencepiece
+protobuf
+
+# Data + I/O
+polars>=1.0
+numpy
+
+# Adapter conversion (Tinker -> PEFT). nightly branch is what asalhi uses.
+# Pin via git ref so it's reproducible:
+tinker-cookbook @ git+https://github.com/thinking-machines-lab/tinker-cookbook.git@nightly
+
+# Kaggle CLI for downloading the comp data + base model + adapters
+kaggle>=1.6.0
+kagglehub

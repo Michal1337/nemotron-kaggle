@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Large downloads — never commit
+data/
+models/
+adapters/
+runs/
+src/
+*.safetensors
+*.zip
+*.tar
+*.tar.gz
+
+# HF / kagglehub caches if they land in the repo
+.cache/
+huggingface/
+
+# Credentials
+.kaggle/
+kaggle.json
+.env
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
