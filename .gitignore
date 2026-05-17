@@ -15,7 +15,6 @@ data/
 models/
 adapters/
 runs/
-src/
 *.safetensors
 *.zip
 *.tar
