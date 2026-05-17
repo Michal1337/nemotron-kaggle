@@ -1,0 +1,13 @@
+# Install torch separately for your CUDA version, then `pip install -r requirements.txt`
+# e.g. CUDA 12.x:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu124
+torch>=2.4
+transformers>=4.56.2
+peft>=0.15.0
+trl>=0.18.0
+datasets>=2.21
+accelerate>=1.0
+safetensors>=0.5
+polars>=1.0
+sentencepiece
+einops
