@@ -38,3 +38,9 @@ tinker-cookbook @ git+https://github.com/thinking-machines-lab/tinker-cookbook.g
 # Kaggle CLI for downloading the comp data + base model + adapters
 kaggle>=1.6.0
 kagglehub
+
+# vLLM for fast batched inference (eval_adapter.py). Matches the version NVIDIA
+# recommends for Nemotron-3 on the model card. Install separately if needed:
+#   pip install "vllm>=0.12.0"
+# (NOT included automatically because vLLM has its own torch/CUDA constraints
+#  that may clash with the wheel-pinning above on some clusters.)
