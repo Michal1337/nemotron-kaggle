@@ -145,7 +145,34 @@ def tokenize_problem(pid: str, prompts_answers: dict, reasoning_dir: str,
     )
     completion_ids = chat_tok.encode(completion_text, add_special_tokens=False)
 
-    all_tokens = list(prompt_ids) + list(completion_ids)
+    # Some chat-template configurations silently fall back to returning the
+    # rendered prompt string instead of a token-id list when tokenize=True.
+    # Coerce to plain ints; bail out if we can't.
+    def _to_int_list(x, label):
+        if isinstance(x, str):
+            raise RuntimeError(
+                f"{label} for pid={pid} came back as a str of length {len(x)} "
+                f"(head={x[:80]!r}). The chat template likely did not tokenize."
+            )
+        out = []
+        for v in x:
+            if isinstance(v, int):
+                out.append(v)
+            elif hasattr(v, "item"):
+                out.append(int(v.item()))
+            else:
+                try:
+                    out.append(int(v))
+                except (TypeError, ValueError) as e:
+                    raise RuntimeError(
+                        f"{label} for pid={pid} has non-int element {v!r} ({e})"
+                    ) from e
+        return out
+
+    prompt_ids = _to_int_list(prompt_ids, "prompt_ids")
+    completion_ids = _to_int_list(completion_ids, "completion_ids")
+
+    all_tokens = prompt_ids + completion_ids
     mask = [0] * len(prompt_ids) + [1] * len(completion_ids)
     if len(all_tokens) > TOKEN_LIMIT:
         all_tokens = all_tokens[:TOKEN_LIMIT]

@@ -244,12 +244,101 @@ def parse_alice_investigation(text: str) -> dict | None:
 
 def parse_investigation(text: str) -> dict | None:
     """Auto-detect format and parse."""
+    if "category: bit_manipulation" in text:
+        return parse_bit_manipulation_v2_investigation(text)
     if "source: alice_eq_solver" in text:
         return parse_alice_investigation(text)
+    if "source: equation_numeric_v2" in text:
+        return parse_eq_v2_investigation(text)
     if "transform: rev_ops=" in text:
         return parse_v3_investigation(text)
     # Older v1 format (no transform line) — treat as identity
     return parse_v3_investigation(text)
+
+
+def parse_eq_v2_investigation(text: str) -> dict | None:
+    """Parse equation_numeric_v2.py investigation files.
+
+    Format:
+      problem id: <pid>
+      category: <cat>
+      source: equation_numeric_v2
+
+      transform: mode=<m> rev_res=<bool> tier=<t>
+
+      operator-to-operation mapping:
+        '<op>' = <op_name>
+
+      query operator op_name: <op_name>
+
+      examples:
+        <input> = <output>
+
+      query: <q>
+
+      predicted answer: <answer>
+    """
+    m_pred = re.search(r"^predicted answer:\s*(.+)$", text, re.MULTILINE)
+    if not m_pred:
+        return None
+    predicted = m_pred.group(1).strip()
+
+    m_query = re.search(r"^query:\s*(.+)$", text, re.MULTILINE)
+    if not m_query:
+        return None
+    query = m_query.group(1).strip()
+
+    m_xform = re.search(r"transform:\s*mode\s*=\s*(\w+)\s+rev_res\s*=\s*(\w+)\s+tier\s*=\s*(\w+)", text)
+    mode = m_xform.group(1) if m_xform else "standard"
+    rev_res = (m_xform.group(2) == "True") if m_xform else False
+
+    ops: dict[str, str] = {}
+    in_ops = False
+    for line in text.splitlines():
+        if line.strip().startswith("operator-to-operation mapping"):
+            in_ops = True
+            continue
+        if in_ops:
+            if not line.startswith("  "):
+                if line.strip() == "":
+                    if ops:
+                        break
+                    continue
+                break
+            m = re.match(r"\s+'(.)'\s*=\s*(\S+)", line)
+            if m:
+                ops[m.group(1)] = m.group(2)
+
+    m_q_op = re.search(r"^query operator op_name:\s*(\S+)$", text, re.MULTILINE)
+    query_op_name = m_q_op.group(1) if m_q_op else None
+
+    examples: list[tuple[str, str]] = []
+    in_ex = False
+    for line in text.splitlines():
+        if line.strip() == "examples:":
+            in_ex = True
+            continue
+        if in_ex:
+            if not line.startswith("  "):
+                if line.strip() == "":
+                    if examples:
+                        break
+                    continue
+                break
+            m = re.match(r"\s+(\S+)\s*=\s*(\S+)", line)
+            if m:
+                examples.append((m.group(1), m.group(2)))
+
+    return {
+        "_format": "equation_numeric_v2",
+        "ops": ops,
+        "query_op_name": query_op_name,
+        "mode": mode,
+        "rev_res": rev_res,
+        "examples": examples,
+        "query": query,
+        "predicted": predicted,
+    }
 
 
 def _box_each_char(s: str) -> str:
@@ -379,12 +468,360 @@ def narrate_pure_concat(pid: str, problem_data: dict, parsed: dict) -> str:
     return "\n".join(L)
 
 
+def narrate_equation_numeric(pid: str, problem_data: dict, parsed: dict) -> str:
+    """Narrator for equation_numeric problems (operands are already digits).
+
+    Mirrors huikang's [reasoners/equation_numeric.py](../nemotron-master/reasoners/equation_numeric.py)
+    output style: no cipher crack, just operator analysis + apply to query.
+    """
+    ops = parsed["ops"]
+    mode = parsed.get("mode", "standard")
+    rev_res = parsed.get("rev_res", False)
+    examples = parsed["examples"]
+    query = parsed["query"]
+    predicted = parsed["predicted"]
+    query_op_name = parsed.get("query_op_name")
+
+    def quote(s: str) -> str:
+        return f"【{s}】"
+
+    L: list[str] = []
+    L.append("We need to infer the transformation rule from the examples.")
+    L.append("I will put my final answer inside \\boxed{}.")
+    L.append("")
+    L.append("Examples:")
+    for inp, out in examples:
+        L.append(f"  {inp} = {out}")
+    L.append("")
+
+    # Parse operands from examples for inspection
+    import re as _re
+    eq_re = _re.compile(r"^(\d+)(\D)(\d+)$")
+    all_a_b: list[tuple[str, str, str, str]] = []
+    for inp, out in examples:
+        m = eq_re.fullmatch(inp)
+        if m:
+            all_a_b.append((m.group(1), m.group(2), m.group(3), out))
+
+    inputs_list = []
+    for a, _, b, _ in all_a_b:
+        inputs_list.extend([a, b])
+    outputs_list = [o for _, _, _, o in all_a_b]
+    L.append(f"The inputs are {', '.join(inputs_list)}")
+    L.append("")
+    L.append(f"The outputs are {', '.join(outputs_list)}")
+    L.append("")
+
+    if mode == "little_endian":
+        L.append("Treating operands as little-endian (digit-reversed) numbers.")
+        L.append("")
+    if rev_res:
+        L.append("The computed result is reversed before encoding.")
+        L.append("")
+
+    # Per-operator analysis
+    by_op: dict[str, list[tuple[str, str, str]]] = {}
+    for a, op, b, out in all_a_b:
+        by_op.setdefault(op, []).append((a, b, out))
+    for op_char, op_name in sorted(ops.items()):
+        L.append(f"Looking at operator {quote(op_char)} [{', '.join(f'{a}{op_char}{b} = {o}' for a, b, o in by_op.get(op_char, []))}]:")
+        L.append(f"  The operation is {op_name}.")
+        L.append("")
+
+    # Apply to query
+    m = eq_re.fullmatch(query)
+    if m:
+        qa, q_op, qb = m.group(1), m.group(2), m.group(3)
+        L.append(f"Applying to {query}:")
+        L.append(f"  Decoded query: {qa} {q_op} {qb}")
+        if query_op_name:
+            L.append(f"  The operation is {query_op_name}.")
+        L.append(f"  Numeric result: {quote(predicted)}")
+        L.append("")
+
+    L.append("I will now return the answer in \\boxed{}")
+    L.append(f"The answer in \\boxed{{–}} is \\boxed{{{predicted}}}")
+    return "\n".join(L)
+
+
+# ----------------------------------------------------------------------
+# bit_manipulation v2 (MAJ / CHO / PAR4 / AOA / OAO / AXA)
+# ----------------------------------------------------------------------
+
+
+def _bm_rotl(v: int, k: int) -> int:
+    k %= 8
+    return ((v << k) | (v >> (8 - k))) & 0xFF
+
+
+def _bm_apply_transform(name: str, v: int) -> int:
+    if name == "I":
+        return v & 0xFF
+    if name == "NOT":
+        return (v ^ 0xFF) & 0xFF
+    m = re.fullmatch(r"(NOT\s+)?(ROT|SHL|SHR)\((\d+)\)", name.strip())
+    if not m:
+        raise ValueError(f"unknown transform: {name!r}")
+    invert = bool(m.group(1))
+    op, k = m.group(2), int(m.group(3))
+    if op == "ROT":
+        r = _bm_rotl(v, k)
+    elif op == "SHL":
+        r = (v << k) & 0xFF
+    else:
+        r = (v >> k) & 0xFF
+    return (r ^ 0xFF) & 0xFF if invert else r
+
+
+_BM_RULE_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    ("MAJ", re.compile(r"^MAJ\(\s*(.+?)\s*,\s*(.+?)\s*,\s*(.+?)\s*\)$")),
+    ("CHO", re.compile(r"^CHO\(\s*(.+?)\s*,\s*(.+?)\s*,\s*(.+?)\s*\)$")),
+    ("AOA", re.compile(r"^\(\s*(.+?)\s+AND\s+(.+?)\s*\)\s+OR\s+\(\s*(.+?)\s+AND\s+(.+?)\s*\)$")),
+    ("OAO", re.compile(r"^\(\s*(.+?)\s+OR\s+(.+?)\s*\)\s+AND\s+\(\s*(.+?)\s+OR\s+(.+?)\s*\)$")),
+    ("AXA", re.compile(r"^\(\s*(.+?)\s+AND\s+(.+?)\s*\)\s+XOR\s+\(\s*(.+?)\s+AND\s+(.+?)\s*\)$")),
+]
+
+
+def _parse_bm_rule(rule_str: str) -> dict:
+    """Identify the v2 shape and extract the transform list.
+
+    Returns dict {shape, transforms} where transforms is either:
+      - list[str] of length 3 (MAJ, CHO)
+      - list[str] of length 4 (PAR4)
+      - list[list[str]] of two length-2 lists (AOA, OAO, AXA)
+    """
+    rule = rule_str.strip()
+    for shape, pat in _BM_RULE_PATTERNS:
+        m = pat.match(rule)
+        if not m:
+            continue
+        if shape in ("MAJ", "CHO"):
+            return {"shape": shape, "transforms": [m.group(1), m.group(2), m.group(3)]}
+        return {
+            "shape": shape,
+            "transforms": [[m.group(1), m.group(2)], [m.group(3), m.group(4)]],
+        }
+    # PAR4: a XOR b XOR c XOR d (flat, top-level XOR — parens only inside
+    # individual transforms like SHL(1) are fine, so we just check there's no
+    # other top-level operator).
+    if " XOR " in rule and " AND " not in rule and " OR " not in rule:
+        parts = [p.strip() for p in rule.split(" XOR ")]
+        if len(parts) == 4 and all(
+            re.fullmatch(r"(NOT\s+)?(I|NOT|ROT\(\d+\)|SHL\(\d+\)|SHR\(\d+\))", p)
+            for p in parts
+        ):
+            return {"shape": "PAR4", "transforms": parts}
+    raise ValueError(f"unrecognised bit_manipulation rule: {rule!r}")
+
+
+def parse_bit_manipulation_v2_investigation(text: str) -> dict | None:
+    """Parse the investigation format written by bit_manipulation_v2.py (and v1).
+
+    Format:
+      problem id: <pid>
+      category: bit_manipulation
+
+      rule: <rule_string>
+
+      examples:
+        <input_bin> -> <output_bin>
+        ...
+
+      query: <query_bin>
+      predicted answer: <answer_bin>
+    """
+    m_rule = re.search(r"^rule:\s*(.+)$", text, re.MULTILINE)
+    if not m_rule:
+        return None
+    rule_str = m_rule.group(1).strip()
+
+    m_query = re.search(r"^query:\s*(\S+)\s*$", text, re.MULTILINE)
+    m_pred = re.search(r"^predicted answer:\s*(\S+)\s*$", text, re.MULTILINE)
+    if not (m_query and m_pred):
+        return None
+
+    examples: list[tuple[str, str]] = []
+    in_ex = False
+    for line in text.splitlines():
+        if line.strip() == "examples:":
+            in_ex = True
+            continue
+        if in_ex:
+            if not line.startswith("  "):
+                if line.strip() == "":
+                    if examples:
+                        break
+                    continue
+                break
+            m = re.match(r"\s+(\S+)\s*->\s*(\S+)", line)
+            if m:
+                examples.append((m.group(1), m.group(2)))
+
+    try:
+        parsed_rule = _parse_bm_rule(rule_str)
+    except ValueError:
+        return None
+
+    return {
+        "_format": "bit_manipulation_v2",
+        "rule_str": rule_str,
+        "rule": parsed_rule,
+        "examples": examples,
+        "query": m_query.group(1).strip(),
+        "predicted": m_pred.group(1).strip(),
+    }
+
+
+def _bm_eval_rule(rule: dict, v: int) -> int:
+    """Apply a parsed v2 rule to an 8-bit integer input."""
+    shape = rule["shape"]
+    ts = rule["transforms"]
+    if shape == "MAJ":
+        a = _bm_apply_transform(ts[0], v)
+        b = _bm_apply_transform(ts[1], v)
+        c = _bm_apply_transform(ts[2], v)
+        return (a & b) | (a & c) | (b & c)
+    if shape == "CHO":
+        a = _bm_apply_transform(ts[0], v)
+        b = _bm_apply_transform(ts[1], v)
+        c = _bm_apply_transform(ts[2], v)
+        na = a ^ 0xFF
+        return ((a & b) | (na & c)) & 0xFF
+    if shape == "PAR4":
+        r = 0
+        for t in ts:
+            r ^= _bm_apply_transform(t, v)
+        return r & 0xFF
+    if shape == "AOA":
+        (a, b), (c, d) = ts
+        return (
+            (_bm_apply_transform(a, v) & _bm_apply_transform(b, v))
+            | (_bm_apply_transform(c, v) & _bm_apply_transform(d, v))
+        ) & 0xFF
+    if shape == "OAO":
+        (a, b), (c, d) = ts
+        return (
+            (_bm_apply_transform(a, v) | _bm_apply_transform(b, v))
+            & (_bm_apply_transform(c, v) | _bm_apply_transform(d, v))
+        ) & 0xFF
+    if shape == "AXA":
+        (a, b), (c, d) = ts
+        return (
+            (_bm_apply_transform(a, v) & _bm_apply_transform(b, v))
+            ^ (_bm_apply_transform(c, v) & _bm_apply_transform(d, v))
+        ) & 0xFF
+    raise ValueError(f"unknown shape {shape}")
+
+
+def _bm_b(v: int) -> str:
+    return format(v & 0xFF, "08b")
+
+
+_SHAPE_DESCRIPTION = {
+    "MAJ": (
+        "the bitwise majority of three transforms — for each bit position, "
+        "the output bit is 1 iff at least two of the three transformed bits are 1."
+    ),
+    "CHO": (
+        "a bitwise multiplexer (a&b)|(~a&c): the first transform selects, "
+        "for each bit position, whether to take the second (when 1) or third (when 0) transformed bit."
+    ),
+    "PAR4": (
+        "the bitwise XOR of four transforms — for each bit position, "
+        "the output bit is the parity of the four transformed bits."
+    ),
+    "AOA": (
+        "the OR of two ANDs: ((t1 & t2) | (t3 & t4))."
+    ),
+    "OAO": (
+        "the AND of two ORs: ((t1 | t2) & (t3 | t4))."
+    ),
+    "AXA": (
+        "the XOR of two ANDs: ((t1 & t2) ^ (t3 & t4))."
+    ),
+}
+
+
+def narrate_bit_manipulation(pid: str, problem_data: dict, parsed: dict) -> str:
+    """Produce a huikang-compatible CoT for a v2 bit_manipulation investigation.
+
+    huikang's reasoner output for bit_manipulation is column-wise per output bit
+    (~9KB). The v2 shapes (MAJ, CHO, PAR4, AOA, OAO, AXA) don't lend themselves
+    to the column-by-column primitive matching, so we emit a declarative
+    narration: state the rule, demonstrate it on each example by applying every
+    transform and the combiner, then apply to the query. Opening/closing match
+    huikang's universal scaffolding.
+    """
+    rule = parsed["rule"]
+    examples = parsed["examples"]
+    query = parsed["query"]
+    predicted = parsed["predicted"]
+    rule_str = parsed["rule_str"]
+
+    L: list[str] = []
+    L.append("We need to deduce the transformation by matching the example outputs.")
+    L.append("I will put my final answer inside \\boxed{}.")
+    L.append("")
+
+    # Examples block
+    L.append("Examples:")
+    for inp, out in examples:
+        L.append(f"  【{inp}】 -> 【{out}】")
+    L.append("")
+
+    # State the rule
+    L.append(f"The rule is 【{rule_str}】 — {_SHAPE_DESCRIPTION[rule['shape']]}")
+    L.append("")
+
+    # Demonstrate on the first 2-3 examples so the rationale stays bounded
+    demo_n = min(2, len(examples))
+    for ei in range(demo_n):
+        inp_bin, out_bin = examples[ei]
+        v = int(inp_bin, 2)
+        L.append(f"Verifying on example {ei}: input 【{inp_bin}】")
+        for t in _flatten_transforms(rule):
+            tv = _bm_apply_transform(t, v)
+            L.append(f"  【{t}】(【{inp_bin}】) = 【{_bm_b(tv)}】")
+        combined = _bm_eval_rule(rule, v)
+        L.append(f"  combining via {rule['shape']}: 【{_bm_b(combined)}】 (expected 【{out_bin}】)")
+        L.append("")
+
+    # Apply to query
+    qv = int(query, 2)
+    L.append(f"Applying to 【{query}】:")
+    for t in _flatten_transforms(rule):
+        tv = _bm_apply_transform(t, qv)
+        L.append(f"  【{t}】(【{query}】) = 【{_bm_b(tv)}】")
+    result = _bm_eval_rule(rule, qv)
+    L.append(f"  combining via {rule['shape']}: 【{_bm_b(result)}】")
+    L.append("")
+
+    L.append("I will now return the answer in \\boxed{}")
+    L.append(f"The answer in \\boxed{{–}} is \\boxed{{{predicted}}}")
+    return "\n".join(L)
+
+
+def _flatten_transforms(rule: dict) -> list[str]:
+    ts = rule["transforms"]
+    if rule["shape"] in ("MAJ", "CHO", "PAR4"):
+        return list(ts)
+    # AOA / OAO / AXA: list of two pairs
+    flat: list[str] = []
+    for pair in ts:
+        flat.extend(pair)
+    return flat
+
+
 def narrate_cryptarithm(pid: str, problem_data: dict, parsed: dict) -> str:
     """Build a huikang-style CoT reasoning string for a cryptarithm.
 
     Mirrors the conventions in reasoner-style.md. Branches between pure-concat
     (huikang's existing style) and arithmetic (equation_numeric-derived style).
     """
+    # Dispatch on parsed format
+    if parsed.get("_format") == "equation_numeric_v2":
+        return narrate_equation_numeric(pid, problem_data, parsed)
+
     mapping = parsed["mapping"]
     ops = parsed["ops"]
     rev_ops = parsed["rev_ops"]
@@ -641,7 +1078,9 @@ def main() -> None:
     p.add_argument("--parquet-path", default=None,
                    help="Path to solver_results.parquet (required if --source parquet).")
     p.add_argument("--categories", nargs="+",
-                   default=["cryptarithm_deduce", "cryptarithm_guess"],
+                   default=["cryptarithm_deduce", "cryptarithm_guess",
+                            "equation_numeric_deduce", "equation_numeric_guess",
+                            "bit_manipulation"],
                    help="Which category subfolders of investigations/ to walk (investigations source only).")
     p.add_argument("--output-dir", default=None,
                    help="Override the destination for reasoning files (default: <repo>/reasoning).")
@@ -722,7 +1161,10 @@ def main() -> None:
             # `+}`. We don't skip these.
 
             try:
-                trace = narrate_cryptarithm(pid, problem_data, parsed)
+                if parsed.get("_format") == "bit_manipulation_v2":
+                    trace = narrate_bit_manipulation(pid, problem_data, parsed)
+                else:
+                    trace = narrate_cryptarithm(pid, problem_data, parsed)
             except Exception as exc:
                 stats["narration_failed"] += 1
                 if args.verbose:
@@ -795,7 +1237,10 @@ def main() -> None:
                 problem_data = json.loads(pf.readline())
 
             try:
-                trace = narrate_cryptarithm(pid, problem_data, parsed)
+                if parsed.get("_format") == "bit_manipulation_v2":
+                    trace = narrate_bit_manipulation(pid, problem_data, parsed)
+                else:
+                    trace = narrate_cryptarithm(pid, problem_data, parsed)
             except Exception as exc:
                 stats["narration_failed"] += 1
                 if args.verbose:

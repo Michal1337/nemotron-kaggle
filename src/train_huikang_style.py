@@ -143,6 +143,19 @@ def load_corpus(args: argparse.Namespace) -> list[dict]:
         mask = rec["mask"]
         if not tokens:
             continue
+        # Defensive: some corpus-build runs have produced synthetic.json files
+        # whose "tokens" field is a string or a list of non-int values
+        # (apply_chat_template falling back to raw text, for instance).
+        # Skip + report instead of crashing deep inside the training loop.
+        if not isinstance(tokens, list) or (tokens and not isinstance(tokens[0], int)):
+            head = tokens[:60] if isinstance(tokens, (list, str)) else tokens
+            print(f"WARN: pid {sid} has malformed tokens "
+                  f"(type={type(tokens).__name__}, head={head!r}); skipping")
+            continue
+        if not isinstance(mask, list) or (mask and not isinstance(mask[0], int)):
+            print(f"WARN: pid {sid} has malformed mask "
+                  f"(type={type(mask).__name__}); skipping")
+            continue
         if len(tokens) > args.max_seq_len:
             tokens = tokens[: args.max_seq_len]
             mask = mask[: args.max_seq_len]
