@@ -15,6 +15,7 @@ data/
 models/
 adapters/
 runs/
+nemotron-master/
 *.safetensors
 *.zip
 *.tar
