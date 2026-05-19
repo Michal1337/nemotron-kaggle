@@ -55,13 +55,23 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--no-adapter", action="store_true",
                    help="Evaluate BASE model only. Disables LoRA loading.")
     p.add_argument("--corpus-index", required=True,
-                   help="Path to logprobs/index.jsonl defining the pool of problem_ids. "
-                        "Use the 04-08-16-14 index for in-sample eval of huikang's corpus.")
+                   help="Path to logprobs/index.jsonl. Defines what's IN the training corpus.")
     p.add_argument("--train-csv", required=True)
     p.add_argument("--problems-jsonl", required=True)
     p.add_argument("--output", required=True)
 
     # Sampling
+    p.add_argument("--pool-mode", choices=["in-corpus", "out-of-corpus", "all"],
+                   default="in-corpus",
+                   help="in-corpus = problems IN --corpus-index (in-sample smoke test). "
+                        "out-of-corpus = problems in train.csv but NOT in corpus index (held-out). "
+                        "all = every problem in train.csv.")
+    p.add_argument("--status", choices=["rule_found", "rule_unknown", "hypothesis_formed"],
+                   default=None,
+                   help="Optional filter by status in problems.jsonl. "
+                        "Pair --pool-mode out-of-corpus with --status rule_found to eval on "
+                        "huikang's deliberately-excluded easy problems (~2,152), or with "
+                        "--status rule_unknown for the hard tail (~1,166).")
     p.add_argument("--sample-per-category", type=int, default=10,
                    help="Stratified sample per category. 0 = use entire pool (slow).")
     p.add_argument("--seed", type=int, default=42)
@@ -94,20 +104,32 @@ def verify(stored: str, predicted: str) -> bool:
         return p.lower() == s.lower()
 
 
-def load_pool(corpus_index: str, problems: dict, train: dict) -> list[dict]:
-    pids: list[str] = []
-    seen: set[str] = set()
+def load_corpus_pids(corpus_index: str) -> set[str]:
+    s: set[str] = set()
     with open(corpus_index) as f:
         for line in f:
             r = json.loads(line)
-            if r.get("epoch", 0) != 0:
-                continue
-            pid = r["problem_id"]
-            if pid in seen or pid not in problems or pid not in train:
-                continue
-            seen.add(pid)
-            pids.append(pid)
-    return [{**problems[pid], **train[pid]} for pid in pids]
+            if r.get("epoch", 0) == 0:
+                s.add(r["problem_id"])
+    return s
+
+
+def build_pool(corpus_index: str, problems: dict, train: dict,
+               pool_mode: str, status: str | None) -> list[dict]:
+    in_corpus = load_corpus_pids(corpus_index)
+    out: list[dict] = []
+    for pid, p in problems.items():
+        if pid not in train:
+            continue
+        if pool_mode == "in-corpus" and pid not in in_corpus:
+            continue
+        if pool_mode == "out-of-corpus" and pid in in_corpus:
+            continue
+        # pool_mode == "all" includes everything in train.csv
+        if status and p.get("status") != status:
+            continue
+        out.append({**p, **train[pid]})
+    return out
 
 
 def stratified_sample(pool: list[dict], n_per_cat: int, seed: int) -> list[dict]:
@@ -134,8 +156,14 @@ def main() -> None:
         for row in csv.DictReader(f):
             train[row["id"]] = {"prompt": row["prompt"], "answer": row["answer"]}
 
-    pool = load_pool(args.corpus_index, problems, train)
-    print(f"Pool: {len(pool):,} problems")
+    pool = build_pool(args.corpus_index, problems, train, args.pool_mode, args.status)
+    pool_cat = Counter(p["category"] for p in pool)
+    print(f"Pool ({args.pool_mode}"
+          + (f", status={args.status}" if args.status else "")
+          + f"): {len(pool):,} problems")
+    print(f"  by category: {dict(pool_cat)}")
+    if not pool:
+        raise SystemExit("Pool is empty — check --pool-mode / --status combination.")
     sample = stratified_sample(pool, args.sample_per_category, args.seed)
     cat_counts = Counter(s["category"] for s in sample)
     print(f"Sample: {len(sample)} ({dict(cat_counts)})")
@@ -230,6 +258,8 @@ def main() -> None:
         "adapter": str(args.adapter) if enable_lora else None,
         "base_model": str(args.base_model),
         "corpus_index": str(args.corpus_index),
+        "pool_mode": args.pool_mode,
+        "status_filter": args.status,
         "sample_per_category": args.sample_per_category,
         "n_total": len(results),
         "n_correct": total_correct,
