@@ -141,8 +141,20 @@ def tokenize_problem(pid: str, prompts_answers: dict, reasoning_dir: str,
 
     messages = [{"role": "user", "content": prompt_text + PROMPT_SUFFIX}]
     prompt_ids = chat_tok.apply_chat_template(
-        messages, tokenize=True, add_generation_prompt=True, enable_thinking=True,
+        messages,
+        tokenize=True,
+        add_generation_prompt=True,
+        enable_thinking=True,
+        # Some transformers versions default to return_dict=True here, which
+        # gives a BatchEncoding whose iteration yields the dict keys
+        # ('input_ids', 'attention_mask') rather than the token ids.
+        return_dict=False,
+        return_tensors=None,
     )
+    # Defensive: if a BatchEncoding still slipped through (older transformers
+    # ignore return_dict=False), pull out input_ids explicitly.
+    if hasattr(prompt_ids, "get") and "input_ids" in prompt_ids:
+        prompt_ids = prompt_ids["input_ids"]
     completion_ids = chat_tok.encode(completion_text, add_special_tokens=False)
 
     # Some chat-template configurations silently fall back to returning the
