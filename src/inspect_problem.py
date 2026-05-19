@@ -156,10 +156,14 @@ def show_one(p: dict, repo: Path, show_reasoning: bool) -> None:
         if prob_detail_path.is_file():
             try:
                 detail = json.loads(prob_detail_path.read_text().splitlines()[0])
+                if detail.get("question"):
+                    print(f"\n[QUESTION (test input)]  {detail['question']!r}")
                 if "examples" in detail:
                     print(f"\n[EXAMPLES] ({len(detail['examples'])})")
                     for i, ex in enumerate(detail["examples"][:8]):
-                        print(f"  {i}: input={ex.get('input')!r}  output={ex.get('output')!r}")
+                        inp = ex.get("input_value", ex.get("input"))
+                        out = ex.get("output_value", ex.get("output"))
+                        print(f"  {i}: {inp!r}  ->  {out!r}")
                     if len(detail["examples"]) > 8:
                         print(f"  ... ({len(detail['examples']) - 8} more)")
             except (json.JSONDecodeError, IndexError):
