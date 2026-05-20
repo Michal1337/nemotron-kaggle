@@ -1,0 +1,31 @@
+{
+  "peft_type": "LORA",
+  "auto_mapping": null,
+  "base_model_name_or_path": "/mnt/evafs/groups/re-com/mgromadzki/llms/nemotron-3-nano-30b-a3b-bf16",
+  "bias": "none",
+  "fan_in_fan_out": false,
+  "inference_mode": true,
+  "init_lora_weights": true,
+  "lora_alpha": 32,
+  "lora_dropout": 0.0,
+  "modules_to_save": null,
+  "r": 32,
+  "rank_pattern": {
+    "in_proj": 32
+  },
+  "alpha_pattern": {
+    "in_proj": 32
+  },
+  "target_modules": [
+    "down_proj",
+    "in_proj",
+    "k_proj",
+    "lm_head",
+    "o_proj",
+    "out_proj",
+    "q_proj",
+    "up_proj",
+    "v_proj"
+  ],
+  "task_type": "CAUSAL_LM"
+}

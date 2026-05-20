@@ -1,0 +1,869 @@
+{
+  "adapter": null,
+  "base_model": "/mnt/evafs/groups/re-com/mgromadzki/llms/nemotron-3-nano-30b-a3b-bf16",
+  "corpus_index": "/mnt/evafs/groups/re-com/mgromadzki/nemotron-master/training/sft/04-08-16-14/logprobs/index.jsonl",
+  "sample_per_category": 10,
+  "n_total": 90,
+  "n_correct": 35,
+  "accuracy": 0.3888888888888889,
+  "by_category": {
+    "bit_manipulation": {
+      "n": 10,
+      "correct": 1,
+      "accuracy": 0.1
+    },
+    "cipher": {
+      "n": 10,
+      "correct": 5,
+      "accuracy": 0.5
+    },
+    "cryptarithm_deduce": {
+      "n": 10,
+      "correct": 0,
+      "accuracy": 0.0
+    },
+    "cryptarithm_guess": {
+      "n": 10,
+      "correct": 0,
+      "accuracy": 0.0
+    },
+    "equation_numeric_deduce": {
+      "n": 10,
+      "correct": 2,
+      "accuracy": 0.2
+    },
+    "equation_numeric_guess": {
+      "n": 10,
+      "correct": 0,
+      "accuracy": 0.0
+    },
+    "gravity": {
+      "n": 10,
+      "correct": 9,
+      "accuracy": 0.9
+    },
+    "numeral": {
+      "n": 10,
+      "correct": 10,
+      "accuracy": 1.0
+    },
+    "unit_conversion": {
+      "n": 10,
+      "correct": 8,
+      "accuracy": 0.8
+    }
+  },
+  "total_elapsed_s": 188.50194096565247,
+  "results": [
+    {
+      "id": "0b26be60",
+      "category": "bit_manipulation",
+      "gold": "01110111",
+      "predicted": "01110111",
+      "correct": true,
+      "gen_chars": 5091,
+      "gen_tokens": 2661
+    },
+    {
+      "id": "54ca9d57",
+      "category": "bit_manipulation",
+      "gold": "01011111",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 16538,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "186ade13",
+      "category": "bit_manipulation",
+      "gold": "00000000",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 16997,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "5d060d45",
+      "category": "bit_manipulation",
+      "gold": "00000000",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 16424,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "5cbe919f",
+      "category": "bit_manipulation",
+      "gold": "00000000",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 16887,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "06667a93",
+      "category": "bit_manipulation",
+      "gold": "10100011",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 18666,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "d030b265",
+      "category": "bit_manipulation",
+      "gold": "11000000",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 18202,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "9b2b3698",
+      "category": "bit_manipulation",
+      "gold": "01000001",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 18451,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "a0ffbfd2",
+      "category": "bit_manipulation",
+      "gold": "11000111",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 16372,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "41671d43",
+      "category": "bit_manipulation",
+      "gold": "11011111",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 19404,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "e866cf9d",
+      "category": "cipher",
+      "gold": "teacher chases the hidden book",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 23708,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "49f6975c",
+      "category": "cipher",
+      "gold": "king studies through mountain",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 22789,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "50c066b0",
+      "category": "cipher",
+      "gold": "rabbit found the colorful message",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 22007,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "5923f138",
+      "category": "cipher",
+      "gold": "teacher chases garden",
+      "predicted": "teacher chases garden",
+      "correct": true,
+      "gen_chars": 8057,
+      "gen_tokens": 2686
+    },
+    {
+      "id": "eac4329c",
+      "category": "cipher",
+      "gold": "mouse studies mirror",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 23988,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "188615db",
+      "category": "cipher",
+      "gold": "princess reads message",
+      "predicted": "princess reads message",
+      "correct": true,
+      "gen_chars": 14353,
+      "gen_tokens": 4940
+    },
+    {
+      "id": "e8361d47",
+      "category": "cipher",
+      "gold": "the hidden king writes",
+      "predicted": "the hidden king writes",
+      "correct": true,
+      "gen_chars": 10491,
+      "gen_tokens": 3768
+    },
+    {
+      "id": "b44f2254",
+      "category": "cipher",
+      "gold": "cat creates the wise book",
+      "predicted": "cat creates the wise book",
+      "correct": true,
+      "gen_chars": 10827,
+      "gen_tokens": 3860
+    },
+    {
+      "id": "97d07b1c",
+      "category": "cipher",
+      "gold": "bird chases above garden",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 25434,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "e17e76cc",
+      "category": "cipher",
+      "gold": "the dark alice reads",
+      "predicted": "the dark alice reads",
+      "correct": true,
+      "gen_chars": 11994,
+      "gen_tokens": 3871
+    },
+    {
+      "id": "d63c1fb0",
+      "category": "cryptarithm_deduce",
+      "gold": "\"|\"%",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 27737,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "dea42835",
+      "category": "cryptarithm_deduce",
+      "gold": "['[/",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 28415,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "ed61a9d6",
+      "category": "cryptarithm_deduce",
+      "gold": "!\"\"!",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 27145,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "97d6db7a",
+      "category": "cryptarithm_deduce",
+      "gold": "\\[%^",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 26738,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "23b0eb54",
+      "category": "cryptarithm_deduce",
+      "gold": "]/:)",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 26548,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "21b90d9f",
+      "category": "cryptarithm_deduce",
+      "gold": "){?{",
+      "predicted": "...",
+      "correct": false,
+      "gen_chars": 29412,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "6897f05e",
+      "category": "cryptarithm_deduce",
+      "gold": ":%::",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 31658,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "5bd9919c",
+      "category": "cryptarithm_deduce",
+      "gold": "]']`",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 30801,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "3185fdeb",
+      "category": "cryptarithm_deduce",
+      "gold": "(%|[",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 28501,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "a08fbb68",
+      "category": "cryptarithm_deduce",
+      "gold": "\\$'<",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 25761,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "0da1841f",
+      "category": "cryptarithm_guess",
+      "gold": "(\\#%",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 29295,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "55f4fa64",
+      "category": "cryptarithm_guess",
+      "gold": "{{!?",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 29851,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "07b440f0",
+      "category": "cryptarithm_guess",
+      "gold": "@$^$",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 30503,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "258b796b",
+      "category": "cryptarithm_guess",
+      "gold": "`]|[",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 30861,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "9dfe5ac9",
+      "category": "cryptarithm_guess",
+      "gold": "'\\%\"",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 31389,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "25ee72c3",
+      "category": "cryptarithm_guess",
+      "gold": "#\"<<",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 29201,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "deed3497",
+      "category": "cryptarithm_guess",
+      "gold": "\\^]]",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 29129,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "0fcf912a",
+      "category": "cryptarithm_guess",
+      "gold": "|#&!",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 29042,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "c7844441",
+      "category": "cryptarithm_guess",
+      "gold": ":/$^",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 28199,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "2e9973b7",
+      "category": "cryptarithm_guess",
+      "gold": ")\\?%",
+      "predicted": "?",
+      "correct": false,
+      "gen_chars": 29708,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "6b393b81",
+      "category": "equation_numeric_deduce",
+      "gold": "4046",
+      "predicted": "4046",
+      "correct": true,
+      "gen_chars": 3574,
+      "gen_tokens": 1127
+    },
+    {
+      "id": "75645166",
+      "category": "equation_numeric_deduce",
+      "gold": "7952",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 20732,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "620c2521",
+      "category": "equation_numeric_deduce",
+      "gold": "936",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 22153,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "18268687",
+      "category": "equation_numeric_deduce",
+      "gold": "0",
+      "predicted": "0",
+      "correct": true,
+      "gen_chars": 2272,
+      "gen_tokens": 820
+    },
+    {
+      "id": "21261dc6",
+      "category": "equation_numeric_deduce",
+      "gold": "-25",
+      "predicted": "-2",
+      "correct": false,
+      "gen_chars": 25361,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "b4a15ca6",
+      "category": "equation_numeric_deduce",
+      "gold": "301",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 21197,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "9a5b6b28",
+      "category": "equation_numeric_deduce",
+      "gold": "^22",
+      "predicted": "22",
+      "correct": false,
+      "gen_chars": 27682,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "94b92001",
+      "category": "equation_numeric_deduce",
+      "gold": "801",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 22342,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "1d6c587d",
+      "category": "equation_numeric_deduce",
+      "gold": "6163",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 22424,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "26b716ed",
+      "category": "equation_numeric_deduce",
+      "gold": "36",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 15564,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "e9e6b620",
+      "category": "equation_numeric_guess",
+      "gold": "25",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 16270,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "8df3daad",
+      "category": "equation_numeric_guess",
+      "gold": "34",
+      "predicted": "4511",
+      "correct": false,
+      "gen_chars": 1714,
+      "gen_tokens": 512
+    },
+    {
+      "id": "6e6401d7",
+      "category": "equation_numeric_guess",
+      "gold": "1",
+      "predicted": "8743",
+      "correct": false,
+      "gen_chars": 7298,
+      "gen_tokens": 3072
+    },
+    {
+      "id": "b7ad0671",
+      "category": "equation_numeric_guess",
+      "gold": "16",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 20562,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "662fd21c",
+      "category": "equation_numeric_guess",
+      "gold": "17",
+      "predicted": "3709",
+      "correct": false,
+      "gen_chars": 18026,
+      "gen_tokens": 5505
+    },
+    {
+      "id": "be877da5",
+      "category": "equation_numeric_guess",
+      "gold": "02",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 19043,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "9c91b226",
+      "category": "equation_numeric_guess",
+      "gold": "03",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 23767,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "dc178d1c",
+      "category": "equation_numeric_guess",
+      "gold": "04",
+      "predicted": "2141",
+      "correct": false,
+      "gen_chars": 18265,
+      "gen_tokens": 6151
+    },
+    {
+      "id": "66a0856f",
+      "category": "equation_numeric_guess",
+      "gold": "38",
+      "predicted": "7436",
+      "correct": false,
+      "gen_chars": 3483,
+      "gen_tokens": 964
+    },
+    {
+      "id": "8ae8e12a",
+      "category": "equation_numeric_guess",
+      "gold": "9",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 20609,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "8e6bc995",
+      "category": "gravity",
+      "gold": "80.45",
+      "predicted": "80.44",
+      "correct": true,
+      "gen_chars": 5151,
+      "gen_tokens": 3178
+    },
+    {
+      "id": "51ccb149",
+      "category": "gravity",
+      "gold": "210.86",
+      "predicted": "210.86",
+      "correct": true,
+      "gen_chars": 5656,
+      "gen_tokens": 3424
+    },
+    {
+      "id": "8a6d10b1",
+      "category": "gravity",
+      "gold": "23.3",
+      "predicted": "23.3",
+      "correct": true,
+      "gen_chars": 4892,
+      "gen_tokens": 2990
+    },
+    {
+      "id": "09311189",
+      "category": "gravity",
+      "gold": "101.99",
+      "predicted": "102.0",
+      "correct": true,
+      "gen_chars": 6392,
+      "gen_tokens": 3936
+    },
+    {
+      "id": "2af48539",
+      "category": "gravity",
+      "gold": "52.26",
+      "predicted": "52.3",
+      "correct": true,
+      "gen_chars": 4449,
+      "gen_tokens": 2554
+    },
+    {
+      "id": "c188c1a6",
+      "category": "gravity",
+      "gold": "70.58",
+      "predicted": "70.57",
+      "correct": true,
+      "gen_chars": 4441,
+      "gen_tokens": 2712
+    },
+    {
+      "id": "63e8b2d5",
+      "category": "gravity",
+      "gold": "5.89",
+      "predicted": "5.89",
+      "correct": true,
+      "gen_chars": 3112,
+      "gen_tokens": 1657
+    },
+    {
+      "id": "faf8e57f",
+      "category": "gravity",
+      "gold": "119.45",
+      "predicted": "119.4\\ \\text{m",
+      "correct": false,
+      "gen_chars": 3729,
+      "gen_tokens": 1927
+    },
+    {
+      "id": "b5c56f58",
+      "category": "gravity",
+      "gold": "58.18",
+      "predicted": "58.17",
+      "correct": true,
+      "gen_chars": 2279,
+      "gen_tokens": 1181
+    },
+    {
+      "id": "7ee39525",
+      "category": "gravity",
+      "gold": "145.57",
+      "predicted": "145.57",
+      "correct": true,
+      "gen_chars": 3378,
+      "gen_tokens": 2107
+    },
+    {
+      "id": "b8496b92",
+      "category": "numeral",
+      "gold": "L",
+      "predicted": "L",
+      "correct": true,
+      "gen_chars": 680,
+      "gen_tokens": 213
+    },
+    {
+      "id": "c1935859",
+      "category": "numeral",
+      "gold": "XIII",
+      "predicted": "XIII",
+      "correct": true,
+      "gen_chars": 375,
+      "gen_tokens": 121
+    },
+    {
+      "id": "2f6f8725",
+      "category": "numeral",
+      "gold": "XVII",
+      "predicted": "XVII",
+      "correct": true,
+      "gen_chars": 374,
+      "gen_tokens": 116
+    },
+    {
+      "id": "92cabcca",
+      "category": "numeral",
+      "gold": "XVII",
+      "predicted": "XVII",
+      "correct": true,
+      "gen_chars": 376,
+      "gen_tokens": 128
+    },
+    {
+      "id": "91dec13c",
+      "category": "numeral",
+      "gold": "LIII",
+      "predicted": "LIII",
+      "correct": true,
+      "gen_chars": 393,
+      "gen_tokens": 142
+    },
+    {
+      "id": "5de0a53d",
+      "category": "numeral",
+      "gold": "LXIX",
+      "predicted": "LXIX",
+      "correct": true,
+      "gen_chars": 485,
+      "gen_tokens": 187
+    },
+    {
+      "id": "a5ca6cf6",
+      "category": "numeral",
+      "gold": "XCIX",
+      "predicted": "XCIX",
+      "correct": true,
+      "gen_chars": 472,
+      "gen_tokens": 173
+    },
+    {
+      "id": "07c3a547",
+      "category": "numeral",
+      "gold": "LXVI",
+      "predicted": "LXVI",
+      "correct": true,
+      "gen_chars": 455,
+      "gen_tokens": 169
+    },
+    {
+      "id": "792a58ee",
+      "category": "numeral",
+      "gold": "LXXVII",
+      "predicted": "LXXVII",
+      "correct": true,
+      "gen_chars": 447,
+      "gen_tokens": 148
+    },
+    {
+      "id": "4b4984a0",
+      "category": "numeral",
+      "gold": "LXVII",
+      "predicted": "LXVII",
+      "correct": true,
+      "gen_chars": 383,
+      "gen_tokens": 137
+    },
+    {
+      "id": "5776269d",
+      "category": "unit_conversion",
+      "gold": "21.82",
+      "predicted": "21.82",
+      "correct": true,
+      "gen_chars": 4222,
+      "gen_tokens": 2532
+    },
+    {
+      "id": "e6157d05",
+      "category": "unit_conversion",
+      "gold": "9.64",
+      "predicted": "9.65",
+      "correct": true,
+      "gen_chars": 5176,
+      "gen_tokens": 2262
+    },
+    {
+      "id": "383bc6d3",
+      "category": "unit_conversion",
+      "gold": "27.57",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 13361,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "4ce156ee",
+      "category": "unit_conversion",
+      "gold": "71.89",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 13442,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "fa41bbc5",
+      "category": "unit_conversion",
+      "gold": "18.00",
+      "predicted": "18.00",
+      "correct": true,
+      "gen_chars": 2795,
+      "gen_tokens": 1534
+    },
+    {
+      "id": "5e5c4b8d",
+      "category": "unit_conversion",
+      "gold": "20.73",
+      "predicted": "20.74",
+      "correct": true,
+      "gen_chars": 9175,
+      "gen_tokens": 5531
+    },
+    {
+      "id": "340f68d0",
+      "category": "unit_conversion",
+      "gold": "14.96",
+      "predicted": "14.95",
+      "correct": true,
+      "gen_chars": 12800,
+      "gen_tokens": 6831
+    },
+    {
+      "id": "7b8e2063",
+      "category": "unit_conversion",
+      "gold": "46.78",
+      "predicted": "46.75",
+      "correct": true,
+      "gen_chars": 16246,
+      "gen_tokens": 7381
+    },
+    {
+      "id": "c8e4fac7",
+      "category": "unit_conversion",
+      "gold": "32.78",
+      "predicted": "32.78",
+      "correct": true,
+      "gen_chars": 7709,
+      "gen_tokens": 4441
+    },
+    {
+      "id": "542a0c0d",
+      "category": "unit_conversion",
+      "gold": "4.19",
+      "predicted": "4.19",
+      "correct": true,
+      "gen_chars": 16488,
+      "gen_tokens": 6686
+    }
+  ]
+}

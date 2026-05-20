@@ -1,0 +1,6233 @@
+{
+  "adapter": "runs/huikang-repro-04-08-16-14",
+  "base_model": "/mnt/evafs/groups/re-com/mgromadzki/llms/nemotron-3-nano-30b-a3b-bf16",
+  "corpus_index": "/mnt/evafs/groups/re-com/mgromadzki/nemotron-master/training/sft/04-08-16-14/logprobs/index.jsonl",
+  "sample_per_category": 100,
+  "n_total": 686,
+  "n_correct": 669,
+  "accuracy": 0.9752186588921283,
+  "by_category": {
+    "bit_manipulation": {
+      "n": 100,
+      "correct": 86,
+      "accuracy": 0.86
+    },
+    "cipher": {
+      "n": 100,
+      "correct": 99,
+      "accuracy": 0.99
+    },
+    "cryptarithm_deduce": {
+      "n": 54,
+      "correct": 54,
+      "accuracy": 1.0
+    },
+    "cryptarithm_guess": {
+      "n": 11,
+      "correct": 11,
+      "accuracy": 1.0
+    },
+    "equation_numeric_deduce": {
+      "n": 100,
+      "correct": 98,
+      "accuracy": 0.98
+    },
+    "equation_numeric_guess": {
+      "n": 21,
+      "correct": 21,
+      "accuracy": 1.0
+    },
+    "gravity": {
+      "n": 100,
+      "correct": 100,
+      "accuracy": 1.0
+    },
+    "numeral": {
+      "n": 100,
+      "correct": 100,
+      "accuracy": 1.0
+    },
+    "unit_conversion": {
+      "n": 100,
+      "correct": 100,
+      "accuracy": 1.0
+    }
+  },
+  "total_elapsed_s": 716.8612792491913,
+  "results": [
+    {
+      "id": "0b26be60",
+      "category": "bit_manipulation",
+      "gold": "01110111",
+      "predicted": "01110111",
+      "correct": true,
+      "gen_chars": 8770,
+      "gen_tokens": 6758
+    },
+    {
+      "id": "54ca9d57",
+      "category": "bit_manipulation",
+      "gold": "01011111",
+      "predicted": "01011111",
+      "correct": true,
+      "gen_chars": 8075,
+      "gen_tokens": 6020
+    },
+    {
+      "id": "186ade13",
+      "category": "bit_manipulation",
+      "gold": "00000000",
+      "predicted": "00000000",
+      "correct": true,
+      "gen_chars": 8445,
+      "gen_tokens": 6604
+    },
+    {
+      "id": "5d060d45",
+      "category": "bit_manipulation",
+      "gold": "00000000",
+      "predicted": "00000000",
+      "correct": true,
+      "gen_chars": 9214,
+      "gen_tokens": 7208
+    },
+    {
+      "id": "5cbe919f",
+      "category": "bit_manipulation",
+      "gold": "00000000",
+      "predicted": "00000000",
+      "correct": true,
+      "gen_chars": 8154,
+      "gen_tokens": 6256
+    },
+    {
+      "id": "06667a93",
+      "category": "bit_manipulation",
+      "gold": "10100011",
+      "predicted": "10100011",
+      "correct": true,
+      "gen_chars": 8443,
+      "gen_tokens": 6609
+    },
+    {
+      "id": "d030b265",
+      "category": "bit_manipulation",
+      "gold": "11000000",
+      "predicted": "11000000",
+      "correct": true,
+      "gen_chars": 8542,
+      "gen_tokens": 6440
+    },
+    {
+      "id": "9b2b3698",
+      "category": "bit_manipulation",
+      "gold": "01000001",
+      "predicted": "01000001",
+      "correct": true,
+      "gen_chars": 8786,
+      "gen_tokens": 6748
+    },
+    {
+      "id": "a0ffbfd2",
+      "category": "bit_manipulation",
+      "gold": "11000111",
+      "predicted": "11000111",
+      "correct": true,
+      "gen_chars": 8711,
+      "gen_tokens": 6637
+    },
+    {
+      "id": "41671d43",
+      "category": "bit_manipulation",
+      "gold": "11011111",
+      "predicted": "11111111",
+      "correct": false,
+      "gen_chars": 8026,
+      "gen_tokens": 6126
+    },
+    {
+      "id": "14a72508",
+      "category": "bit_manipulation",
+      "gold": "11010110",
+      "predicted": "11010110",
+      "correct": true,
+      "gen_chars": 9623,
+      "gen_tokens": 7334
+    },
+    {
+      "id": "dbabfbdd",
+      "category": "bit_manipulation",
+      "gold": "11000000",
+      "predicted": "11000000",
+      "correct": true,
+      "gen_chars": 8782,
+      "gen_tokens": 6552
+    },
+    {
+      "id": "6c41978b",
+      "category": "bit_manipulation",
+      "gold": "10010111",
+      "predicted": "10010011",
+      "correct": false,
+      "gen_chars": 9579,
+      "gen_tokens": 7350
+    },
+    {
+      "id": "c9ed8124",
+      "category": "bit_manipulation",
+      "gold": "01010011",
+      "predicted": "01010011",
+      "correct": true,
+      "gen_chars": 8778,
+      "gen_tokens": 6614
+    },
+    {
+      "id": "c30a782a",
+      "category": "bit_manipulation",
+      "gold": "01000110",
+      "predicted": "01000110",
+      "correct": true,
+      "gen_chars": 9230,
+      "gen_tokens": 7203
+    },
+    {
+      "id": "63217d23",
+      "category": "bit_manipulation",
+      "gold": "11000001",
+      "predicted": "11000001",
+      "correct": true,
+      "gen_chars": 9089,
+      "gen_tokens": 7175
+    },
+    {
+      "id": "3564baf1",
+      "category": "bit_manipulation",
+      "gold": "10101101",
+      "predicted": "10101101",
+      "correct": true,
+      "gen_chars": 8803,
+      "gen_tokens": 6971
+    },
+    {
+      "id": "30ce5200",
+      "category": "bit_manipulation",
+      "gold": "00000010",
+      "predicted": "00100010",
+      "correct": false,
+      "gen_chars": 8612,
+      "gen_tokens": 6588
+    },
+    {
+      "id": "f43f6142",
+      "category": "bit_manipulation",
+      "gold": "01111101",
+      "predicted": "01011101",
+      "correct": false,
+      "gen_chars": 8629,
+      "gen_tokens": 6683
+    },
+    {
+      "id": "57e76efa",
+      "category": "bit_manipulation",
+      "gold": "10111111",
+      "predicted": "10111111",
+      "correct": true,
+      "gen_chars": 9338,
+      "gen_tokens": 7187
+    },
+    {
+      "id": "6728c338",
+      "category": "bit_manipulation",
+      "gold": "00110011",
+      "predicted": "00110011",
+      "correct": true,
+      "gen_chars": 8717,
+      "gen_tokens": 6912
+    },
+    {
+      "id": "c625ba91",
+      "category": "bit_manipulation",
+      "gold": "11111111",
+      "predicted": "11111111",
+      "correct": true,
+      "gen_chars": 8956,
+      "gen_tokens": 7121
+    },
+    {
+      "id": "7ff6d6c3",
+      "category": "bit_manipulation",
+      "gold": "00000010",
+      "predicted": "00000010",
+      "correct": true,
+      "gen_chars": 9390,
+      "gen_tokens": 7295
+    },
+    {
+      "id": "0334b2bf",
+      "category": "bit_manipulation",
+      "gold": "00001111",
+      "predicted": "00001111",
+      "correct": true,
+      "gen_chars": 9156,
+      "gen_tokens": 6976
+    },
+    {
+      "id": "7c206ce2",
+      "category": "bit_manipulation",
+      "gold": "00000000",
+      "predicted": "00000000",
+      "correct": true,
+      "gen_chars": 8635,
+      "gen_tokens": 6826
+    },
+    {
+      "id": "a46d71d0",
+      "category": "bit_manipulation",
+      "gold": "01000011",
+      "predicted": "01000001",
+      "correct": false,
+      "gen_chars": 8763,
+      "gen_tokens": 6561
+    },
+    {
+      "id": "410837d0",
+      "category": "bit_manipulation",
+      "gold": "00101101",
+      "predicted": "00101101",
+      "correct": true,
+      "gen_chars": 8571,
+      "gen_tokens": 6740
+    },
+    {
+      "id": "7a79ac09",
+      "category": "bit_manipulation",
+      "gold": "11111111",
+      "predicted": "11111111",
+      "correct": true,
+      "gen_chars": 8857,
+      "gen_tokens": 6872
+    },
+    {
+      "id": "ecf2a23b",
+      "category": "bit_manipulation",
+      "gold": "00000000",
+      "predicted": "00000000",
+      "correct": true,
+      "gen_chars": 8616,
+      "gen_tokens": 6817
+    },
+    {
+      "id": "a916a770",
+      "category": "bit_manipulation",
+      "gold": "00000000",
+      "predicted": "00000000",
+      "correct": true,
+      "gen_chars": 8886,
+      "gen_tokens": 7024
+    },
+    {
+      "id": "2aa0fadc",
+      "category": "bit_manipulation",
+      "gold": "11000011",
+      "predicted": "11000011",
+      "correct": true,
+      "gen_chars": 8463,
+      "gen_tokens": 6456
+    },
+    {
+      "id": "77819d4e",
+      "category": "bit_manipulation",
+      "gold": "10111101",
+      "predicted": "10111101",
+      "correct": true,
+      "gen_chars": 8362,
+      "gen_tokens": 6434
+    },
+    {
+      "id": "fecfb467",
+      "category": "bit_manipulation",
+      "gold": "00101100",
+      "predicted": "00101100",
+      "correct": true,
+      "gen_chars": 8817,
+      "gen_tokens": 6998
+    },
+    {
+      "id": "25a8aeb1",
+      "category": "bit_manipulation",
+      "gold": "00111111",
+      "predicted": "00111111",
+      "correct": true,
+      "gen_chars": 9521,
+      "gen_tokens": 7020
+    },
+    {
+      "id": "ee429a2d",
+      "category": "bit_manipulation",
+      "gold": "01011001",
+      "predicted": "01011001",
+      "correct": true,
+      "gen_chars": 8347,
+      "gen_tokens": 6333
+    },
+    {
+      "id": "1c3f2ff9",
+      "category": "bit_manipulation",
+      "gold": "11111011",
+      "predicted": "11111011",
+      "correct": true,
+      "gen_chars": 8795,
+      "gen_tokens": 6895
+    },
+    {
+      "id": "4c23d822",
+      "category": "bit_manipulation",
+      "gold": "01100000",
+      "predicted": "01100000",
+      "correct": true,
+      "gen_chars": 9493,
+      "gen_tokens": 7288
+    },
+    {
+      "id": "d0ea0b5f",
+      "category": "bit_manipulation",
+      "gold": "10110001",
+      "predicted": "10000001",
+      "correct": false,
+      "gen_chars": 8504,
+      "gen_tokens": 6424
+    },
+    {
+      "id": "9d964043",
+      "category": "bit_manipulation",
+      "gold": "01001111",
+      "predicted": "01001111",
+      "correct": true,
+      "gen_chars": 8393,
+      "gen_tokens": 6394
+    },
+    {
+      "id": "0c7acd69",
+      "category": "bit_manipulation",
+      "gold": "11110101",
+      "predicted": "11110101",
+      "correct": true,
+      "gen_chars": 9054,
+      "gen_tokens": 7144
+    },
+    {
+      "id": "ca8d32e6",
+      "category": "bit_manipulation",
+      "gold": "10001100",
+      "predicted": "10001100",
+      "correct": true,
+      "gen_chars": 8869,
+      "gen_tokens": 6593
+    },
+    {
+      "id": "22c34f56",
+      "category": "bit_manipulation",
+      "gold": "11110001",
+      "predicted": "11110001",
+      "correct": true,
+      "gen_chars": 9237,
+      "gen_tokens": 7021
+    },
+    {
+      "id": "619a99d2",
+      "category": "bit_manipulation",
+      "gold": "11110100",
+      "predicted": "11110100",
+      "correct": true,
+      "gen_chars": 8736,
+      "gen_tokens": 6806
+    },
+    {
+      "id": "91c9c95f",
+      "category": "bit_manipulation",
+      "gold": "00010010",
+      "predicted": "00010010",
+      "correct": true,
+      "gen_chars": 8438,
+      "gen_tokens": 6360
+    },
+    {
+      "id": "36f13669",
+      "category": "bit_manipulation",
+      "gold": "00000000",
+      "predicted": "00000000",
+      "correct": true,
+      "gen_chars": 8191,
+      "gen_tokens": 6180
+    },
+    {
+      "id": "25764d5f",
+      "category": "bit_manipulation",
+      "gold": "00001000",
+      "predicted": "00001000",
+      "correct": true,
+      "gen_chars": 8964,
+      "gen_tokens": 7035
+    },
+    {
+      "id": "934a2c55",
+      "category": "bit_manipulation",
+      "gold": "00101011",
+      "predicted": "00101011",
+      "correct": true,
+      "gen_chars": 8399,
+      "gen_tokens": 6566
+    },
+    {
+      "id": "b2fb65cf",
+      "category": "bit_manipulation",
+      "gold": "11000011",
+      "predicted": "11000011",
+      "correct": true,
+      "gen_chars": 9230,
+      "gen_tokens": 6875
+    },
+    {
+      "id": "053f87d3",
+      "category": "bit_manipulation",
+      "gold": "11111111",
+      "predicted": "",
+      "correct": false,
+      "gen_chars": 8364,
+      "gen_tokens": 7680
+    },
+    {
+      "id": "4b8f6727",
+      "category": "bit_manipulation",
+      "gold": "11010110",
+      "predicted": "11010110",
+      "correct": true,
+      "gen_chars": 8943,
+      "gen_tokens": 6671
+    },
+    {
+      "id": "6a186446",
+      "category": "bit_manipulation",
+      "gold": "01110111",
+      "predicted": "01110111",
+      "correct": true,
+      "gen_chars": 9477,
+      "gen_tokens": 7318
+    },
+    {
+      "id": "07434d56",
+      "category": "bit_manipulation",
+      "gold": "11011001",
+      "predicted": "11011001",
+      "correct": true,
+      "gen_chars": 8588,
+      "gen_tokens": 6593
+    },
+    {
+      "id": "c6fa3e3f",
+      "category": "bit_manipulation",
+      "gold": "00110011",
+      "predicted": "00110011",
+      "correct": true,
+      "gen_chars": 9170,
+      "gen_tokens": 7342
+    },
+    {
+      "id": "38fcbd0c",
+      "category": "bit_manipulation",
+      "gold": "00000000",
+      "predicted": "00000000",
+      "correct": true,
+      "gen_chars": 8430,
+      "gen_tokens": 6526
+    },
+    {
+      "id": "b1890a99",
+      "category": "bit_manipulation",
+      "gold": "00001011",
+      "predicted": "00001011",
+      "correct": true,
+      "gen_chars": 8303,
+      "gen_tokens": 6371
+    },
+    {
+      "id": "e3c672be",
+      "category": "bit_manipulation",
+      "gold": "10010011",
+      "predicted": "10010011",
+      "correct": true,
+      "gen_chars": 8342,
+      "gen_tokens": 6385
+    },
+    {
+      "id": "e98106b7",
+      "category": "bit_manipulation",
+      "gold": "11100011",
+      "predicted": "11100011",
+      "correct": true,
+      "gen_chars": 9553,
+      "gen_tokens": 7344
+    },
+    {
+      "id": "4d20d5c5",
+      "category": "bit_manipulation",
+      "gold": "00101001",
+      "predicted": "00101001",
+      "correct": true,
+      "gen_chars": 8975,
+      "gen_tokens": 6824
+    },
+    {
+      "id": "368f20dd",
+      "category": "bit_manipulation",
+      "gold": "10000101",
+      "predicted": "10000101",
+      "correct": true,
+      "gen_chars": 8636,
+      "gen_tokens": 6708
+    },
+    {
+      "id": "2facfaa4",
+      "category": "bit_manipulation",
+      "gold": "00111110",
+      "predicted": "00111110",
+      "correct": true,
+      "gen_chars": 8234,
+      "gen_tokens": 6246
+    },
+    {
+      "id": "dfd704f8",
+      "category": "bit_manipulation",
+      "gold": "11101110",
+      "predicted": "11101110",
+      "correct": true,
+      "gen_chars": 8660,
+      "gen_tokens": 6363
+    },
+    {
+      "id": "b398201b",
+      "category": "bit_manipulation",
+      "gold": "11000111",
+      "predicted": "11000111",
+      "correct": true,
+      "gen_chars": 8295,
+      "gen_tokens": 6169
+    },
+    {
+      "id": "a1d2bb0c",
+      "category": "bit_manipulation",
+      "gold": "00100010",
+      "predicted": "00100000",
+      "correct": false,
+      "gen_chars": 8391,
+      "gen_tokens": 6355
+    },
+    {
+      "id": "4e918d82",
+      "category": "bit_manipulation",
+      "gold": "11101001",
+      "predicted": "11101001",
+      "correct": true,
+      "gen_chars": 8750,
+      "gen_tokens": 6815
+    },
+    {
+      "id": "431b5993",
+      "category": "bit_manipulation",
+      "gold": "11010000",
+      "predicted": "11010000",
+      "correct": true,
+      "gen_chars": 8353,
+      "gen_tokens": 6384
+    },
+    {
+      "id": "b06650c1",
+      "category": "bit_manipulation",
+      "gold": "11101110",
+      "predicted": "11101110",
+      "correct": true,
+      "gen_chars": 8797,
+      "gen_tokens": 6613
+    },
+    {
+      "id": "6564df54",
+      "category": "bit_manipulation",
+      "gold": "00000010",
+      "predicted": "00000010",
+      "correct": true,
+      "gen_chars": 9258,
+      "gen_tokens": 7155
+    },
+    {
+      "id": "722b605b",
+      "category": "bit_manipulation",
+      "gold": "00111101",
+      "predicted": "00111101",
+      "correct": true,
+      "gen_chars": 9044,
+      "gen_tokens": 6887
+    },
+    {
+      "id": "0b3cf93f",
+      "category": "bit_manipulation",
+      "gold": "10011001",
+      "predicted": "10011001",
+      "correct": true,
+      "gen_chars": 9050,
+      "gen_tokens": 7110
+    },
+    {
+      "id": "f1c1ed58",
+      "category": "bit_manipulation",
+      "gold": "01111111",
+      "predicted": "01111111",
+      "correct": true,
+      "gen_chars": 9247,
+      "gen_tokens": 6849
+    },
+    {
+      "id": "f557284b",
+      "category": "bit_manipulation",
+      "gold": "10101111",
+      "predicted": "10101111",
+      "correct": true,
+      "gen_chars": 8239,
+      "gen_tokens": 6134
+    },
+    {
+      "id": "412186a6",
+      "category": "bit_manipulation",
+      "gold": "00000111",
+      "predicted": "00001111",
+      "correct": false,
+      "gen_chars": 8361,
+      "gen_tokens": 6580
+    },
+    {
+      "id": "c113055a",
+      "category": "bit_manipulation",
+      "gold": "00010100",
+      "predicted": "00010100",
+      "correct": true,
+      "gen_chars": 8121,
+      "gen_tokens": 6267
+    },
+    {
+      "id": "c0788894",
+      "category": "bit_manipulation",
+      "gold": "11111111",
+      "predicted": "11111111",
+      "correct": true,
+      "gen_chars": 9087,
+      "gen_tokens": 7154
+    },
+    {
+      "id": "e818def8",
+      "category": "bit_manipulation",
+      "gold": "10101010",
+      "predicted": "10101010",
+      "correct": true,
+      "gen_chars": 8254,
+      "gen_tokens": 6300
+    },
+    {
+      "id": "7877dd7f",
+      "category": "bit_manipulation",
+      "gold": "11101000",
+      "predicted": "11101000",
+      "correct": true,
+      "gen_chars": 8339,
+      "gen_tokens": 6488
+    },
+    {
+      "id": "3cd80c64",
+      "category": "bit_manipulation",
+      "gold": "01100100",
+      "predicted": "10100100",
+      "correct": false,
+      "gen_chars": 8513,
+      "gen_tokens": 6416
+    },
+    {
+      "id": "3a72f760",
+      "category": "bit_manipulation",
+      "gold": "10101101",
+      "predicted": "10101101",
+      "correct": true,
+      "gen_chars": 8110,
+      "gen_tokens": 6287
+    },
+    {
+      "id": "f469f4d7",
+      "category": "bit_manipulation",
+      "gold": "11010001",
+      "predicted": "11010001",
+      "correct": true,
+      "gen_chars": 8084,
+      "gen_tokens": 6190
+    },
+    {
+      "id": "5b1b10d3",
+      "category": "bit_manipulation",
+      "gold": "01010010",
+      "predicted": "01010010",
+      "correct": true,
+      "gen_chars": 9183,
+      "gen_tokens": 6936
+    },
+    {
+      "id": "ee61df9f",
+      "category": "bit_manipulation",
+      "gold": "01000100",
+      "predicted": "01000100",
+      "correct": true,
+      "gen_chars": 9409,
+      "gen_tokens": 7225
+    },
+    {
+      "id": "dbb611da",
+      "category": "bit_manipulation",
+      "gold": "00000001",
+      "predicted": "00000001",
+      "correct": true,
+      "gen_chars": 9175,
+      "gen_tokens": 6880
+    },
+    {
+      "id": "32e5fe87",
+      "category": "bit_manipulation",
+      "gold": "00000000",
+      "predicted": "00000000",
+      "correct": true,
+      "gen_chars": 8438,
+      "gen_tokens": 6620
+    },
+    {
+      "id": "73b7b116",
+      "category": "bit_manipulation",
+      "gold": "00101000",
+      "predicted": "00101000",
+      "correct": true,
+      "gen_chars": 8444,
+      "gen_tokens": 6584
+    },
+    {
+      "id": "b487923a",
+      "category": "bit_manipulation",
+      "gold": "00001011",
+      "predicted": "00010011",
+      "correct": false,
+      "gen_chars": 8092,
+      "gen_tokens": 6044
+    },
+    {
+      "id": "48db5ccf",
+      "category": "bit_manipulation",
+      "gold": "01101110",
+      "predicted": "01101110",
+      "correct": true,
+      "gen_chars": 8888,
+      "gen_tokens": 6974
+    },
+    {
+      "id": "68614b78",
+      "category": "bit_manipulation",
+      "gold": "00001110",
+      "predicted": "00001110",
+      "correct": true,
+      "gen_chars": 8923,
+      "gen_tokens": 6769
+    },
+    {
+      "id": "7b412ac0",
+      "category": "bit_manipulation",
+      "gold": "11101010",
+      "predicted": "11101011",
+      "correct": false,
+      "gen_chars": 9238,
+      "gen_tokens": 7169
+    },
+    {
+      "id": "069dbaab",
+      "category": "bit_manipulation",
+      "gold": "00010000",
+      "predicted": "00010001",
+      "correct": false,
+      "gen_chars": 9696,
+      "gen_tokens": 7607
+    },
+    {
+      "id": "e495b8e7",
+      "category": "bit_manipulation",
+      "gold": "01000111",
+      "predicted": "01000111",
+      "correct": true,
+      "gen_chars": 8212,
+      "gen_tokens": 6362
+    },
+    {
+      "id": "3ff1ae35",
+      "category": "bit_manipulation",
+      "gold": "10101010",
+      "predicted": "10101010",
+      "correct": true,
+      "gen_chars": 8275,
+      "gen_tokens": 6277
+    },
+    {
+      "id": "114a7439",
+      "category": "bit_manipulation",
+      "gold": "01110001",
+      "predicted": "01110001",
+      "correct": true,
+      "gen_chars": 7905,
+      "gen_tokens": 5930
+    },
+    {
+      "id": "455b6b61",
+      "category": "bit_manipulation",
+      "gold": "00111011",
+      "predicted": "10111011",
+      "correct": false,
+      "gen_chars": 8770,
+      "gen_tokens": 6813
+    },
+    {
+      "id": "691c6e38",
+      "category": "bit_manipulation",
+      "gold": "00010000",
+      "predicted": "00010000",
+      "correct": true,
+      "gen_chars": 8861,
+      "gen_tokens": 6730
+    },
+    {
+      "id": "20cdbdb1",
+      "category": "bit_manipulation",
+      "gold": "11100001",
+      "predicted": "11100001",
+      "correct": true,
+      "gen_chars": 9077,
+      "gen_tokens": 6995
+    },
+    {
+      "id": "72ae2707",
+      "category": "bit_manipulation",
+      "gold": "00011001",
+      "predicted": "00011001",
+      "correct": true,
+      "gen_chars": 8315,
+      "gen_tokens": 6348
+    },
+    {
+      "id": "bc520eb0",
+      "category": "bit_manipulation",
+      "gold": "00001011",
+      "predicted": "00001011",
+      "correct": true,
+      "gen_chars": 8586,
+      "gen_tokens": 6426
+    },
+    {
+      "id": "6e56c02c",
+      "category": "bit_manipulation",
+      "gold": "01001011",
+      "predicted": "01001011",
+      "correct": true,
+      "gen_chars": 8666,
+      "gen_tokens": 6758
+    },
+    {
+      "id": "d1ecdd11",
+      "category": "bit_manipulation",
+      "gold": "11001100",
+      "predicted": "11001100",
+      "correct": true,
+      "gen_chars": 8750,
+      "gen_tokens": 6728
+    },
+    {
+      "id": "21245d76",
+      "category": "bit_manipulation",
+      "gold": "01111111",
+      "predicted": "01111111",
+      "correct": true,
+      "gen_chars": 8771,
+      "gen_tokens": 6554
+    },
+    {
+      "id": "e866cf9d",
+      "category": "cipher",
+      "gold": "teacher chases the hidden book",
+      "predicted": "teacher chases the hidden book",
+      "correct": true,
+      "gen_chars": 3057,
+      "gen_tokens": 1554
+    },
+    {
+      "id": "49f6975c",
+      "category": "cipher",
+      "gold": "king studies through mountain",
+      "predicted": "king studies through mountain",
+      "correct": true,
+      "gen_chars": 3869,
+      "gen_tokens": 1981
+    },
+    {
+      "id": "50c066b0",
+      "category": "cipher",
+      "gold": "rabbit found the colorful message",
+      "predicted": "rabbit found the colorful message",
+      "correct": true,
+      "gen_chars": 3902,
+      "gen_tokens": 1961
+    },
+    {
+      "id": "5923f138",
+      "category": "cipher",
+      "gold": "teacher chases garden",
+      "predicted": "teacher chases garden",
+      "correct": true,
+      "gen_chars": 3087,
+      "gen_tokens": 1604
+    },
+    {
+      "id": "eac4329c",
+      "category": "cipher",
+      "gold": "mouse studies mirror",
+      "predicted": "mouse studies mirror",
+      "correct": true,
+      "gen_chars": 3591,
+      "gen_tokens": 1771
+    },
+    {
+      "id": "188615db",
+      "category": "cipher",
+      "gold": "princess reads message",
+      "predicted": "princess reads message",
+      "correct": true,
+      "gen_chars": 4024,
+      "gen_tokens": 2152
+    },
+    {
+      "id": "e8361d47",
+      "category": "cipher",
+      "gold": "the hidden king writes",
+      "predicted": "the hidden king writes",
+      "correct": true,
+      "gen_chars": 4217,
+      "gen_tokens": 2240
+    },
+    {
+      "id": "b44f2254",
+      "category": "cipher",
+      "gold": "cat creates the wise book",
+      "predicted": "cat creates the wise book",
+      "correct": true,
+      "gen_chars": 4455,
+      "gen_tokens": 2398
+    },
+    {
+      "id": "97d07b1c",
+      "category": "cipher",
+      "gold": "bird chases above garden",
+      "predicted": "bird chases above garden",
+      "correct": true,
+      "gen_chars": 3479,
+      "gen_tokens": 1712
+    },
+    {
+      "id": "e17e76cc",
+      "category": "cipher",
+      "gold": "the dark alice reads",
+      "predicted": "the dark alice reads",
+      "correct": true,
+      "gen_chars": 3034,
+      "gen_tokens": 1562
+    },
+    {
+      "id": "1fcbbb93",
+      "category": "cipher",
+      "gold": "wizard creates near mountain",
+      "predicted": "wizard creates near mountain",
+      "correct": true,
+      "gen_chars": 4756,
+      "gen_tokens": 2512
+    },
+    {
+      "id": "1f4a566c",
+      "category": "cipher",
+      "gold": "the golden rabbit dreams",
+      "predicted": "the golden rabbit dreams",
+      "correct": true,
+      "gen_chars": 4072,
+      "gen_tokens": 2138
+    },
+    {
+      "id": "a07c827c",
+      "category": "cipher",
+      "gold": "queen dreams around wonderland",
+      "predicted": "queen dreams around wonderland",
+      "correct": true,
+      "gen_chars": 4403,
+      "gen_tokens": 2265
+    },
+    {
+      "id": "7853312a",
+      "category": "cipher",
+      "gold": "the clever bird dreams",
+      "predicted": "the clever bird dreams",
+      "correct": true,
+      "gen_chars": 3273,
+      "gen_tokens": 1627
+    },
+    {
+      "id": "79f5e777",
+      "category": "cipher",
+      "gold": "princess dreams the dark garden",
+      "predicted": "princess dreams the dark garden",
+      "correct": true,
+      "gen_chars": 3751,
+      "gen_tokens": 1877
+    },
+    {
+      "id": "f598a715",
+      "category": "cipher",
+      "gold": "the dark bird discovers",
+      "predicted": "the dark bird discovers",
+      "correct": true,
+      "gen_chars": 4133,
+      "gen_tokens": 2154
+    },
+    {
+      "id": "fe5ba68b",
+      "category": "cipher",
+      "gold": "queen reads beyond valley",
+      "predicted": "queen reads beyond valley",
+      "correct": true,
+      "gen_chars": 4468,
+      "gen_tokens": 2286
+    },
+    {
+      "id": "d0ea94a2",
+      "category": "cipher",
+      "gold": "knight follows the wise garden",
+      "predicted": "knight follows the wise garden",
+      "correct": true,
+      "gen_chars": 3593,
+      "gen_tokens": 1807
+    },
+    {
+      "id": "bf52169b",
+      "category": "cipher",
+      "gold": "the clever wizard reads",
+      "predicted": "the clever wizard reads",
+      "correct": true,
+      "gen_chars": 3450,
+      "gen_tokens": 1735
+    },
+    {
+      "id": "be69c49f",
+      "category": "cipher",
+      "gold": "cat chases key",
+      "predicted": "cat chases key",
+      "correct": true,
+      "gen_chars": 3759,
+      "gen_tokens": 1938
+    },
+    {
+      "id": "fd683d67",
+      "category": "cipher",
+      "gold": "turtle found the dark crystal",
+      "predicted": "turtle found the dark crystal",
+      "correct": true,
+      "gen_chars": 4427,
+      "gen_tokens": 2304
+    },
+    {
+      "id": "b65a341a",
+      "category": "cipher",
+      "gold": "the golden cat discovers",
+      "predicted": "the golden cat discovers",
+      "correct": true,
+      "gen_chars": 3628,
+      "gen_tokens": 1815
+    },
+    {
+      "id": "bf08c301",
+      "category": "cipher",
+      "gold": "wizard writes garden",
+      "predicted": "wizard writes garden",
+      "correct": true,
+      "gen_chars": 3656,
+      "gen_tokens": 1900
+    },
+    {
+      "id": "0a41eb96",
+      "category": "cipher",
+      "gold": "the bright king reads",
+      "predicted": "the bright king reads",
+      "correct": true,
+      "gen_chars": 3834,
+      "gen_tokens": 1981
+    },
+    {
+      "id": "1e378206",
+      "category": "cipher",
+      "gold": "the curious alice draws",
+      "predicted": "the curious alice draws",
+      "correct": true,
+      "gen_chars": 4602,
+      "gen_tokens": 2484
+    },
+    {
+      "id": "99371400",
+      "category": "cipher",
+      "gold": "the bright dragon explores",
+      "predicted": "the bright dragon explores",
+      "correct": true,
+      "gen_chars": 4064,
+      "gen_tokens": 2097
+    },
+    {
+      "id": "3da50553",
+      "category": "cipher",
+      "gold": "bird follows beyond forest",
+      "predicted": "bird follows beyond forest",
+      "correct": true,
+      "gen_chars": 4168,
+      "gen_tokens": 2150
+    },
+    {
+      "id": "782e9e0f",
+      "category": "cipher",
+      "gold": "rabbit creates the colorful puzzle",
+      "predicted": "rabbit creates the colorful puzzle",
+      "correct": true,
+      "gen_chars": 3716,
+      "gen_tokens": 1887
+    },
+    {
+      "id": "5156f5fa",
+      "category": "cipher",
+      "gold": "the curious princess creates",
+      "predicted": "the curious princess creates",
+      "correct": true,
+      "gen_chars": 3454,
+      "gen_tokens": 1732
+    },
+    {
+      "id": "074f618a",
+      "category": "cipher",
+      "gold": "student explores near palace",
+      "predicted": "student explores near palace",
+      "correct": true,
+      "gen_chars": 4186,
+      "gen_tokens": 2122
+    },
+    {
+      "id": "542800ae",
+      "category": "cipher",
+      "gold": "king discovers forest",
+      "predicted": "king discovers forest",
+      "correct": true,
+      "gen_chars": 4853,
+      "gen_tokens": 2508
+    },
+    {
+      "id": "835edcfa",
+      "category": "cipher",
+      "gold": "queen writes in garden",
+      "predicted": "queen writes in garden",
+      "correct": true,
+      "gen_chars": 4288,
+      "gen_tokens": 2230
+    },
+    {
+      "id": "255ec836",
+      "category": "cipher",
+      "gold": "wizard creates through wonderland",
+      "predicted": "wizard creates through wonderland",
+      "correct": true,
+      "gen_chars": 3805,
+      "gen_tokens": 1944
+    },
+    {
+      "id": "5290ad9b",
+      "category": "cipher",
+      "gold": "dragon discovers the ancient mirror",
+      "predicted": "dragon discovers the ancient mirror",
+      "correct": true,
+      "gen_chars": 4475,
+      "gen_tokens": 2351
+    },
+    {
+      "id": "dc8c22f7",
+      "category": "cipher",
+      "gold": "student discovers through library",
+      "predicted": "student discovers through library",
+      "correct": true,
+      "gen_chars": 4551,
+      "gen_tokens": 2320
+    },
+    {
+      "id": "f7033c9d",
+      "category": "cipher",
+      "gold": "the ancient princess found",
+      "predicted": "the ancient princess found",
+      "correct": true,
+      "gen_chars": 3869,
+      "gen_tokens": 1996
+    },
+    {
+      "id": "1ed2944a",
+      "category": "cipher",
+      "gold": "the dark dragon discovers",
+      "predicted": "the dark dragon discovers",
+      "correct": true,
+      "gen_chars": 3648,
+      "gen_tokens": 1898
+    },
+    {
+      "id": "882ae49a",
+      "category": "cipher",
+      "gold": "the dark princess writes",
+      "predicted": "the dark princess writes",
+      "correct": true,
+      "gen_chars": 4772,
+      "gen_tokens": 2455
+    },
+    {
+      "id": "add6d0aa",
+      "category": "cipher",
+      "gold": "turtle writes the curious garden",
+      "predicted": "turtle writes the curious garden",
+      "correct": true,
+      "gen_chars": 4132,
+      "gen_tokens": 2195
+    },
+    {
+      "id": "c4e0b4e0",
+      "category": "cipher",
+      "gold": "the hidden king studies",
+      "predicted": "the hidden king studies",
+      "correct": true,
+      "gen_chars": 4777,
+      "gen_tokens": 2547
+    },
+    {
+      "id": "49824755",
+      "category": "cipher",
+      "gold": "student chases through forest",
+      "predicted": "student chases through forest",
+      "correct": true,
+      "gen_chars": 3836,
+      "gen_tokens": 1944
+    },
+    {
+      "id": "49b244e3",
+      "category": "cipher",
+      "gold": "king watches the bright crystal",
+      "predicted": "king watches the bright crystal",
+      "correct": true,
+      "gen_chars": 4241,
+      "gen_tokens": 2212
+    },
+    {
+      "id": "0e46fd1d",
+      "category": "cipher",
+      "gold": "the clever student chases",
+      "predicted": "the clever student chases",
+      "correct": true,
+      "gen_chars": 4421,
+      "gen_tokens": 2365
+    },
+    {
+      "id": "7d301a45",
+      "category": "cipher",
+      "gold": "king reads around castle",
+      "predicted": "king reads around castle",
+      "correct": true,
+      "gen_chars": 4656,
+      "gen_tokens": 2414
+    },
+    {
+      "id": "eb15487a",
+      "category": "cipher",
+      "gold": "dragon studies near tower",
+      "predicted": "dragon studies near tower",
+      "correct": true,
+      "gen_chars": 4040,
+      "gen_tokens": 2060
+    },
+    {
+      "id": "5e2d5262",
+      "category": "cipher",
+      "gold": "bird explores around valley",
+      "predicted": "bird explores around valley",
+      "correct": true,
+      "gen_chars": 4022,
+      "gen_tokens": 1996
+    },
+    {
+      "id": "3b5d7527",
+      "category": "cipher",
+      "gold": "princess explores under mountain",
+      "predicted": "princess explores under mountain",
+      "correct": true,
+      "gen_chars": 4351,
+      "gen_tokens": 2304
+    },
+    {
+      "id": "0184a864",
+      "category": "cipher",
+      "gold": "wizard reads in village",
+      "predicted": "wizard reads in village",
+      "correct": true,
+      "gen_chars": 3442,
+      "gen_tokens": 1722
+    },
+    {
+      "id": "be6250c0",
+      "category": "cipher",
+      "gold": "alice discovers the colorful forest",
+      "predicted": "alice discovers the colorful forest",
+      "correct": true,
+      "gen_chars": 3458,
+      "gen_tokens": 1782
+    },
+    {
+      "id": "d1c8d740",
+      "category": "cipher",
+      "gold": "hatter writes the mysterious map",
+      "predicted": "hatter writes the mysterious map",
+      "correct": true,
+      "gen_chars": 3861,
+      "gen_tokens": 1984
+    },
+    {
+      "id": "4dd98412",
+      "category": "cipher",
+      "gold": "dragon watches garden",
+      "predicted": "dragon watches garden",
+      "correct": true,
+      "gen_chars": 3338,
+      "gen_tokens": 1717
+    },
+    {
+      "id": "98724121",
+      "category": "cipher",
+      "gold": "the hidden hatter creates",
+      "predicted": "the hidden hatter creates",
+      "correct": true,
+      "gen_chars": 3392,
+      "gen_tokens": 1746
+    },
+    {
+      "id": "231a83b6",
+      "category": "cipher",
+      "gold": "queen watches under ocean",
+      "predicted": "queen watches under ocean",
+      "correct": true,
+      "gen_chars": 4349,
+      "gen_tokens": 2244
+    },
+    {
+      "id": "f26970b3",
+      "category": "cipher",
+      "gold": "knight studies the golden castle",
+      "predicted": "knight studies the golden castle",
+      "correct": true,
+      "gen_chars": 3742,
+      "gen_tokens": 1897
+    },
+    {
+      "id": "42e9ad95",
+      "category": "cipher",
+      "gold": "the golden cat sees",
+      "predicted": "the golden cat sees",
+      "correct": true,
+      "gen_chars": 3532,
+      "gen_tokens": 1816
+    },
+    {
+      "id": "0b2e6a46",
+      "category": "cipher",
+      "gold": "princess discovers castle",
+      "predicted": "princess discovers castle",
+      "correct": true,
+      "gen_chars": 4250,
+      "gen_tokens": 2187
+    },
+    {
+      "id": "3e2af93e",
+      "category": "cipher",
+      "gold": "mouse reads the bright door",
+      "predicted": "mouse reads the bright door",
+      "correct": true,
+      "gen_chars": 3583,
+      "gen_tokens": 1828
+    },
+    {
+      "id": "4d81ccf0",
+      "category": "cipher",
+      "gold": "teacher dreams the mysterious book",
+      "predicted": "teacher dreams the mysterious book",
+      "correct": true,
+      "gen_chars": 4067,
+      "gen_tokens": 2101
+    },
+    {
+      "id": "b7cd554e",
+      "category": "cipher",
+      "gold": "the hidden mouse studies",
+      "predicted": "the hidden mouse studies",
+      "correct": true,
+      "gen_chars": 3621,
+      "gen_tokens": 1907
+    },
+    {
+      "id": "8b486833",
+      "category": "cipher",
+      "gold": "turtle follows the secret mirror",
+      "predicted": "turtle follows the secret mirror",
+      "correct": true,
+      "gen_chars": 3819,
+      "gen_tokens": 1918
+    },
+    {
+      "id": "e903bc06",
+      "category": "cipher",
+      "gold": "alice imagines around library",
+      "predicted": "alice imagines around library",
+      "correct": true,
+      "gen_chars": 3633,
+      "gen_tokens": 1840
+    },
+    {
+      "id": "a189d177",
+      "category": "cipher",
+      "gold": "teacher watches beyond wonderland",
+      "predicted": "teacher watches beyond wonderland",
+      "correct": true,
+      "gen_chars": 3306,
+      "gen_tokens": 1704
+    },
+    {
+      "id": "87bdf6d8",
+      "category": "cipher",
+      "gold": "the strange alice imagines",
+      "predicted": "the strange alice imagines",
+      "correct": true,
+      "gen_chars": 4029,
+      "gen_tokens": 2109
+    },
+    {
+      "id": "64943206",
+      "category": "cipher",
+      "gold": "cat studies the golden message",
+      "predicted": "cat studies the golden message",
+      "correct": true,
+      "gen_chars": 4045,
+      "gen_tokens": 2092
+    },
+    {
+      "id": "13ae247c",
+      "category": "cipher",
+      "gold": "teacher draws secret",
+      "predicted": "teacher follows secret",
+      "correct": false,
+      "gen_chars": 3584,
+      "gen_tokens": 1841
+    },
+    {
+      "id": "dcf4518b",
+      "category": "cipher",
+      "gold": "student imagines the silver forest",
+      "predicted": "student imagines the silver forest",
+      "correct": true,
+      "gen_chars": 3818,
+      "gen_tokens": 1924
+    },
+    {
+      "id": "bd3787e3",
+      "category": "cipher",
+      "gold": "student creates beyond palace",
+      "predicted": "student creates beyond palace",
+      "correct": true,
+      "gen_chars": 3809,
+      "gen_tokens": 1975
+    },
+    {
+      "id": "f81867e1",
+      "category": "cipher",
+      "gold": "knight discovers in castle",
+      "predicted": "knight discovers in castle",
+      "correct": true,
+      "gen_chars": 4280,
+      "gen_tokens": 2229
+    },
+    {
+      "id": "fe3c4763",
+      "category": "cipher",
+      "gold": "mouse creates in valley",
+      "predicted": "mouse creates in valley",
+      "correct": true,
+      "gen_chars": 4009,
+      "gen_tokens": 2137
+    },
+    {
+      "id": "7232e0a5",
+      "category": "cipher",
+      "gold": "turtle writes the bright puzzle",
+      "predicted": "turtle writes the bright puzzle",
+      "correct": true,
+      "gen_chars": 4076,
+      "gen_tokens": 2095
+    },
+    {
+      "id": "9adfc48b",
+      "category": "cipher",
+      "gold": "princess dreams the clever puzzle",
+      "predicted": "princess dreams the clever puzzle",
+      "correct": true,
+      "gen_chars": 3918,
+      "gen_tokens": 1970
+    },
+    {
+      "id": "249b5a58",
+      "category": "cipher",
+      "gold": "knight imagines the golden crystal",
+      "predicted": "knight imagines the golden crystal",
+      "correct": true,
+      "gen_chars": 4952,
+      "gen_tokens": 2556
+    },
+    {
+      "id": "ea670351",
+      "category": "cipher",
+      "gold": "princess follows key",
+      "predicted": "princess follows key",
+      "correct": true,
+      "gen_chars": 3334,
+      "gen_tokens": 1661
+    },
+    {
+      "id": "59407f0d",
+      "category": "cipher",
+      "gold": "mouse studies the clever mirror",
+      "predicted": "mouse studies the clever mirror",
+      "correct": true,
+      "gen_chars": 4753,
+      "gen_tokens": 2469
+    },
+    {
+      "id": "a7371f3f",
+      "category": "cipher",
+      "gold": "the curious king reads",
+      "predicted": "the curious king reads",
+      "correct": true,
+      "gen_chars": 4288,
+      "gen_tokens": 2223
+    },
+    {
+      "id": "536af2bc",
+      "category": "cipher",
+      "gold": "the bright alice studies",
+      "predicted": "the bright alice studies",
+      "correct": true,
+      "gen_chars": 3856,
+      "gen_tokens": 2004
+    },
+    {
+      "id": "5785a3bd",
+      "category": "cipher",
+      "gold": "the colorful rabbit discovers",
+      "predicted": "the colorful rabbit discovers",
+      "correct": true,
+      "gen_chars": 4296,
+      "gen_tokens": 2205
+    },
+    {
+      "id": "d006c326",
+      "category": "cipher",
+      "gold": "alice explores beyond cave",
+      "predicted": "alice explores beyond cave",
+      "correct": true,
+      "gen_chars": 4130,
+      "gen_tokens": 2107
+    },
+    {
+      "id": "bc42fddf",
+      "category": "cipher",
+      "gold": "alice sees castle",
+      "predicted": "alice sees castle",
+      "correct": true,
+      "gen_chars": 3587,
+      "gen_tokens": 1873
+    },
+    {
+      "id": "11d6c32f",
+      "category": "cipher",
+      "gold": "student sees book",
+      "predicted": "student sees book",
+      "correct": true,
+      "gen_chars": 4377,
+      "gen_tokens": 2256
+    },
+    {
+      "id": "a3c3be4d",
+      "category": "cipher",
+      "gold": "dragon watches near cave",
+      "predicted": "dragon watches near cave",
+      "correct": true,
+      "gen_chars": 3252,
+      "gen_tokens": 1614
+    },
+    {
+      "id": "e56546cc",
+      "category": "cipher",
+      "gold": "turtle discovers key",
+      "predicted": "turtle discovers key",
+      "correct": true,
+      "gen_chars": 4259,
+      "gen_tokens": 2171
+    },
+    {
+      "id": "fc7d8708",
+      "category": "cipher",
+      "gold": "the mysterious mouse creates",
+      "predicted": "the mysterious mouse creates",
+      "correct": true,
+      "gen_chars": 3698,
+      "gen_tokens": 1855
+    },
+    {
+      "id": "a5187932",
+      "category": "cipher",
+      "gold": "turtle watches near village",
+      "predicted": "turtle watches near village",
+      "correct": true,
+      "gen_chars": 3638,
+      "gen_tokens": 1784
+    },
+    {
+      "id": "e4fc442c",
+      "category": "cipher",
+      "gold": "alice found secret",
+      "predicted": "alice found secret",
+      "correct": true,
+      "gen_chars": 3289,
+      "gen_tokens": 1734
+    },
+    {
+      "id": "a97dbf6e",
+      "category": "cipher",
+      "gold": "the clever mouse watches",
+      "predicted": "the clever mouse watches",
+      "correct": true,
+      "gen_chars": 4374,
+      "gen_tokens": 2300
+    },
+    {
+      "id": "82453ed5",
+      "category": "cipher",
+      "gold": "the dark hatter sees",
+      "predicted": "the dark hatter sees",
+      "correct": true,
+      "gen_chars": 3593,
+      "gen_tokens": 1813
+    },
+    {
+      "id": "aadc4d57",
+      "category": "cipher",
+      "gold": "the dark mouse creates",
+      "predicted": "the dark mouse creates",
+      "correct": true,
+      "gen_chars": 4135,
+      "gen_tokens": 2190
+    },
+    {
+      "id": "d9f1416e",
+      "category": "cipher",
+      "gold": "dragon follows treasure",
+      "predicted": "dragon follows treasure",
+      "correct": true,
+      "gen_chars": 3404,
+      "gen_tokens": 1756
+    },
+    {
+      "id": "d4519f28",
+      "category": "cipher",
+      "gold": "turtle imagines treasure",
+      "predicted": "turtle imagines treasure",
+      "correct": true,
+      "gen_chars": 3895,
+      "gen_tokens": 1994
+    },
+    {
+      "id": "f66415c0",
+      "category": "cipher",
+      "gold": "dragon creates around cave",
+      "predicted": "dragon creates around cave",
+      "correct": true,
+      "gen_chars": 3424,
+      "gen_tokens": 1777
+    },
+    {
+      "id": "03fba6b6",
+      "category": "cipher",
+      "gold": "alice watches potion",
+      "predicted": "alice watches potion",
+      "correct": true,
+      "gen_chars": 3296,
+      "gen_tokens": 1654
+    },
+    {
+      "id": "4a573530",
+      "category": "cipher",
+      "gold": "cat follows mirror",
+      "predicted": "cat follows mirror",
+      "correct": true,
+      "gen_chars": 3231,
+      "gen_tokens": 1605
+    },
+    {
+      "id": "3ba215ae",
+      "category": "cipher",
+      "gold": "rabbit dreams around castle",
+      "predicted": "rabbit dreams around castle",
+      "correct": true,
+      "gen_chars": 4289,
+      "gen_tokens": 2310
+    },
+    {
+      "id": "b9a748ac",
+      "category": "cipher",
+      "gold": "the strange knight follows",
+      "predicted": "the strange knight follows",
+      "correct": true,
+      "gen_chars": 4477,
+      "gen_tokens": 2326
+    },
+    {
+      "id": "103b4e09",
+      "category": "cipher",
+      "gold": "teacher follows the wise door",
+      "predicted": "teacher follows the wise door",
+      "correct": true,
+      "gen_chars": 4471,
+      "gen_tokens": 2344
+    },
+    {
+      "id": "9501ecce",
+      "category": "cipher",
+      "gold": "student found castle",
+      "predicted": "student found castle",
+      "correct": true,
+      "gen_chars": 3607,
+      "gen_tokens": 1872
+    },
+    {
+      "id": "73cd9008",
+      "category": "cipher",
+      "gold": "mouse watches the bright secret",
+      "predicted": "mouse watches the bright secret",
+      "correct": true,
+      "gen_chars": 4374,
+      "gen_tokens": 2288
+    },
+    {
+      "id": "1d79fe85",
+      "category": "cipher",
+      "gold": "rabbit chases in garden",
+      "predicted": "rabbit chases in garden",
+      "correct": true,
+      "gen_chars": 3807,
+      "gen_tokens": 2020
+    },
+    {
+      "id": "3895fa75",
+      "category": "cipher",
+      "gold": "turtle studies the clever book",
+      "predicted": "turtle studies the clever book",
+      "correct": true,
+      "gen_chars": 3743,
+      "gen_tokens": 1901
+    },
+    {
+      "id": "d63c1fb0",
+      "category": "cryptarithm_deduce",
+      "gold": "\"|\"%",
+      "predicted": "\"|\"%",
+      "correct": true,
+      "gen_chars": 1495,
+      "gen_tokens": 606
+    },
+    {
+      "id": "dea42835",
+      "category": "cryptarithm_deduce",
+      "gold": "['[/",
+      "predicted": "['[/",
+      "correct": true,
+      "gen_chars": 1510,
+      "gen_tokens": 597
+    },
+    {
+      "id": "ed61a9d6",
+      "category": "cryptarithm_deduce",
+      "gold": "!\"\"!",
+      "predicted": "!\"\"!",
+      "correct": true,
+      "gen_chars": 1493,
+      "gen_tokens": 600
+    },
+    {
+      "id": "97d6db7a",
+      "category": "cryptarithm_deduce",
+      "gold": "\\[%^",
+      "predicted": "\\[%^",
+      "correct": true,
+      "gen_chars": 1327,
+      "gen_tokens": 523
+    },
+    {
+      "id": "23b0eb54",
+      "category": "cryptarithm_deduce",
+      "gold": "]/:)",
+      "predicted": "]/:)",
+      "correct": true,
+      "gen_chars": 1171,
+      "gen_tokens": 443
+    },
+    {
+      "id": "21b90d9f",
+      "category": "cryptarithm_deduce",
+      "gold": "){?{",
+      "predicted": "){?{",
+      "correct": true,
+      "gen_chars": 1452,
+      "gen_tokens": 584
+    },
+    {
+      "id": "6897f05e",
+      "category": "cryptarithm_deduce",
+      "gold": ":%::",
+      "predicted": ":%::",
+      "correct": true,
+      "gen_chars": 1335,
+      "gen_tokens": 515
+    },
+    {
+      "id": "5bd9919c",
+      "category": "cryptarithm_deduce",
+      "gold": "]']`",
+      "predicted": "]']`",
+      "correct": true,
+      "gen_chars": 1150,
+      "gen_tokens": 431
+    },
+    {
+      "id": "3185fdeb",
+      "category": "cryptarithm_deduce",
+      "gold": "(%|[",
+      "predicted": "(%|[",
+      "correct": true,
+      "gen_chars": 1493,
+      "gen_tokens": 608
+    },
+    {
+      "id": "a08fbb68",
+      "category": "cryptarithm_deduce",
+      "gold": "\\$'<",
+      "predicted": "\\$'<",
+      "correct": true,
+      "gen_chars": 1322,
+      "gen_tokens": 517
+    },
+    {
+      "id": "ff0e37ae",
+      "category": "cryptarithm_deduce",
+      "gold": "%'\"`",
+      "predicted": "%'\"`",
+      "correct": true,
+      "gen_chars": 1183,
+      "gen_tokens": 451
+    },
+    {
+      "id": "bc83b0a1",
+      "category": "cryptarithm_deduce",
+      "gold": "(/&{",
+      "predicted": "(/&{",
+      "correct": true,
+      "gen_chars": 1529,
+      "gen_tokens": 615
+    },
+    {
+      "id": "34b4cf96",
+      "category": "cryptarithm_deduce",
+      "gold": "\"\"^^",
+      "predicted": "\"\"^^",
+      "correct": true,
+      "gen_chars": 1498,
+      "gen_tokens": 595
+    },
+    {
+      "id": "a4ee9fa6",
+      "category": "cryptarithm_deduce",
+      "gold": "^@|:",
+      "predicted": "^@|:",
+      "correct": true,
+      "gen_chars": 1548,
+      "gen_tokens": 630
+    },
+    {
+      "id": "39c237c7",
+      "category": "cryptarithm_deduce",
+      "gold": "{]``",
+      "predicted": "{]``",
+      "correct": true,
+      "gen_chars": 1200,
+      "gen_tokens": 463
+    },
+    {
+      "id": "9fc69c17",
+      "category": "cryptarithm_deduce",
+      "gold": "#':@",
+      "predicted": "#':@",
+      "correct": true,
+      "gen_chars": 1142,
+      "gen_tokens": 438
+    },
+    {
+      "id": "81b6d789",
+      "category": "cryptarithm_deduce",
+      "gold": "&)@!",
+      "predicted": "&)@!",
+      "correct": true,
+      "gen_chars": 1373,
+      "gen_tokens": 538
+    },
+    {
+      "id": "d72d8c1c",
+      "category": "cryptarithm_deduce",
+      "gold": "&@&%",
+      "predicted": "&@&%",
+      "correct": true,
+      "gen_chars": 1524,
+      "gen_tokens": 624
+    },
+    {
+      "id": "af018681",
+      "category": "cryptarithm_deduce",
+      "gold": "\\${\"",
+      "predicted": "\\${\"",
+      "correct": true,
+      "gen_chars": 1171,
+      "gen_tokens": 449
+    },
+    {
+      "id": "2c017f70",
+      "category": "cryptarithm_deduce",
+      "gold": ">/%(",
+      "predicted": ">/%(",
+      "correct": true,
+      "gen_chars": 1329,
+      "gen_tokens": 527
+    },
+    {
+      "id": "60ed3f31",
+      "category": "cryptarithm_deduce",
+      "gold": "@%:\\",
+      "predicted": "@%:\\",
+      "correct": true,
+      "gen_chars": 1205,
+      "gen_tokens": 464
+    },
+    {
+      "id": "9cc02bc1",
+      "category": "cryptarithm_deduce",
+      "gold": ":#:'",
+      "predicted": ":#:'",
+      "correct": true,
+      "gen_chars": 1509,
+      "gen_tokens": 622
+    },
+    {
+      "id": "0dcfd566",
+      "category": "cryptarithm_deduce",
+      "gold": ")@\\{",
+      "predicted": ")@\\{",
+      "correct": true,
+      "gen_chars": 1366,
+      "gen_tokens": 538
+    },
+    {
+      "id": "7d8f22b1",
+      "category": "cryptarithm_deduce",
+      "gold": "#)>|",
+      "predicted": "#)>|",
+      "correct": true,
+      "gen_chars": 1356,
+      "gen_tokens": 534
+    },
+    {
+      "id": "524cb5c6",
+      "category": "cryptarithm_deduce",
+      "gold": "$>>\\",
+      "predicted": "$>>\\",
+      "correct": true,
+      "gen_chars": 1351,
+      "gen_tokens": 534
+    },
+    {
+      "id": "2f6531cb",
+      "category": "cryptarithm_deduce",
+      "gold": "@::'",
+      "predicted": "@::'",
+      "correct": true,
+      "gen_chars": 1217,
+      "gen_tokens": 473
+    },
+    {
+      "id": "d6c03e21",
+      "category": "cryptarithm_deduce",
+      "gold": "&(`#",
+      "predicted": "&(`#",
+      "correct": true,
+      "gen_chars": 1363,
+      "gen_tokens": 544
+    },
+    {
+      "id": "8dac3984",
+      "category": "cryptarithm_deduce",
+      "gold": ":!:|",
+      "predicted": ":!:|",
+      "correct": true,
+      "gen_chars": 1356,
+      "gen_tokens": 544
+    },
+    {
+      "id": "065abaf6",
+      "category": "cryptarithm_deduce",
+      "gold": "&/:\\",
+      "predicted": "&/:\\",
+      "correct": true,
+      "gen_chars": 1512,
+      "gen_tokens": 607
+    },
+    {
+      "id": "bca230fd",
+      "category": "cryptarithm_deduce",
+      "gold": "!<[$",
+      "predicted": "!<[$",
+      "correct": true,
+      "gen_chars": 1536,
+      "gen_tokens": 633
+    },
+    {
+      "id": "85c5b2a2",
+      "category": "cryptarithm_deduce",
+      "gold": "$<$$",
+      "predicted": "$<$$",
+      "correct": true,
+      "gen_chars": 1363,
+      "gen_tokens": 540
+    },
+    {
+      "id": "b1b10e83",
+      "category": "cryptarithm_deduce",
+      "gold": "|\"#$",
+      "predicted": "|\"#$",
+      "correct": true,
+      "gen_chars": 1519,
+      "gen_tokens": 619
+    },
+    {
+      "id": "24e1f1d5",
+      "category": "cryptarithm_deduce",
+      "gold": "^#(!",
+      "predicted": "^#(!",
+      "correct": true,
+      "gen_chars": 1346,
+      "gen_tokens": 544
+    },
+    {
+      "id": "f8bbabab",
+      "category": "cryptarithm_deduce",
+      "gold": ">^`>",
+      "predicted": ">^`>",
+      "correct": true,
+      "gen_chars": 1219,
+      "gen_tokens": 471
+    },
+    {
+      "id": "8043a9d2",
+      "category": "cryptarithm_deduce",
+      "gold": "$|\\:",
+      "predicted": "$|\\:",
+      "correct": true,
+      "gen_chars": 1363,
+      "gen_tokens": 529
+    },
+    {
+      "id": "dac75343",
+      "category": "cryptarithm_deduce",
+      "gold": "#@@`",
+      "predicted": "#@@`",
+      "correct": true,
+      "gen_chars": 1524,
+      "gen_tokens": 621
+    },
+    {
+      "id": "b13d511a",
+      "category": "cryptarithm_deduce",
+      "gold": "\\&[[",
+      "predicted": "\\&[[",
+      "correct": true,
+      "gen_chars": 1526,
+      "gen_tokens": 621
+    },
+    {
+      "id": "0d4b2baa",
+      "category": "cryptarithm_deduce",
+      "gold": ":(|#",
+      "predicted": ":(|#",
+      "correct": true,
+      "gen_chars": 1147,
+      "gen_tokens": 439
+    },
+    {
+      "id": "e585410a",
+      "category": "cryptarithm_deduce",
+      "gold": "$\"!@",
+      "predicted": "$\"!@",
+      "correct": true,
+      "gen_chars": 1380,
+      "gen_tokens": 548
+    },
+    {
+      "id": "02a04b59",
+      "category": "cryptarithm_deduce",
+      "gold": "#>]#",
+      "predicted": "#>]#",
+      "correct": true,
+      "gen_chars": 1183,
+      "gen_tokens": 457
+    },
+    {
+      "id": "9aa8dc92",
+      "category": "cryptarithm_deduce",
+      "gold": "/#</",
+      "predicted": "/#</",
+      "correct": true,
+      "gen_chars": 1202,
+      "gen_tokens": 467
+    },
+    {
+      "id": "d0b1e41a",
+      "category": "cryptarithm_deduce",
+      "gold": "#{\"!",
+      "predicted": "#{\"!",
+      "correct": true,
+      "gen_chars": 1223,
+      "gen_tokens": 466
+    },
+    {
+      "id": "8e56a42e",
+      "category": "cryptarithm_deduce",
+      "gold": "%/<>",
+      "predicted": "%/<>",
+      "correct": true,
+      "gen_chars": 1198,
+      "gen_tokens": 456
+    },
+    {
+      "id": "0133bcec",
+      "category": "cryptarithm_deduce",
+      "gold": "\\([#",
+      "predicted": "\\([#",
+      "correct": true,
+      "gen_chars": 1535,
+      "gen_tokens": 623
+    },
+    {
+      "id": "d7662688",
+      "category": "cryptarithm_deduce",
+      "gold": "]&]]",
+      "predicted": "]&]]",
+      "correct": true,
+      "gen_chars": 1210,
+      "gen_tokens": 451
+    },
+    {
+      "id": "02b8d816",
+      "category": "cryptarithm_deduce",
+      "gold": ">$$>",
+      "predicted": ">$$>",
+      "correct": true,
+      "gen_chars": 1229,
+      "gen_tokens": 486
+    },
+    {
+      "id": "64d775e5",
+      "category": "cryptarithm_deduce",
+      "gold": "$&)<",
+      "predicted": "$&)<",
+      "correct": true,
+      "gen_chars": 1387,
+      "gen_tokens": 549
+    },
+    {
+      "id": "08f6216d",
+      "category": "cryptarithm_deduce",
+      "gold": "|>>>",
+      "predicted": "|>>>",
+      "correct": true,
+      "gen_chars": 1203,
+      "gen_tokens": 456
+    },
+    {
+      "id": "1c7a0091",
+      "category": "cryptarithm_deduce",
+      "gold": ")`<@",
+      "predicted": ")`<@",
+      "correct": true,
+      "gen_chars": 1517,
+      "gen_tokens": 616
+    },
+    {
+      "id": "1d10ccaf",
+      "category": "cryptarithm_deduce",
+      "gold": "<({&",
+      "predicted": "<({&",
+      "correct": true,
+      "gen_chars": 1166,
+      "gen_tokens": 454
+    },
+    {
+      "id": "7eecd498",
+      "category": "cryptarithm_deduce",
+      "gold": "^:`!",
+      "predicted": "^:`!",
+      "correct": true,
+      "gen_chars": 1476,
+      "gen_tokens": 598
+    },
+    {
+      "id": "eac0e775",
+      "category": "cryptarithm_deduce",
+      "gold": "<@<(",
+      "predicted": "<@<(",
+      "correct": true,
+      "gen_chars": 1260,
+      "gen_tokens": 488
+    },
+    {
+      "id": "e977d0b7",
+      "category": "cryptarithm_deduce",
+      "gold": "&[/{",
+      "predicted": "&[/{",
+      "correct": true,
+      "gen_chars": 1498,
+      "gen_tokens": 606
+    },
+    {
+      "id": "39a1f5e9",
+      "category": "cryptarithm_deduce",
+      "gold": "<\">[",
+      "predicted": "<\">[",
+      "correct": true,
+      "gen_chars": 1219,
+      "gen_tokens": 463
+    },
+    {
+      "id": "0da1841f",
+      "category": "cryptarithm_guess",
+      "gold": "(\\#%",
+      "predicted": "(\\#%",
+      "correct": true,
+      "gen_chars": 1407,
+      "gen_tokens": 558
+    },
+    {
+      "id": "55f4fa64",
+      "category": "cryptarithm_guess",
+      "gold": "{{!?",
+      "predicted": "{{!?",
+      "correct": true,
+      "gen_chars": 1157,
+      "gen_tokens": 430
+    },
+    {
+      "id": "07b440f0",
+      "category": "cryptarithm_guess",
+      "gold": "@$^$",
+      "predicted": "@$^$",
+      "correct": true,
+      "gen_chars": 1498,
+      "gen_tokens": 597
+    },
+    {
+      "id": "258b796b",
+      "category": "cryptarithm_guess",
+      "gold": "`]|[",
+      "predicted": "`]|[",
+      "correct": true,
+      "gen_chars": 1133,
+      "gen_tokens": 427
+    },
+    {
+      "id": "9dfe5ac9",
+      "category": "cryptarithm_guess",
+      "gold": "'\\%\"",
+      "predicted": "'\\%\"",
+      "correct": true,
+      "gen_chars": 1227,
+      "gen_tokens": 463
+    },
+    {
+      "id": "25ee72c3",
+      "category": "cryptarithm_guess",
+      "gold": "#\"<<",
+      "predicted": "#\"<<",
+      "correct": true,
+      "gen_chars": 1491,
+      "gen_tokens": 586
+    },
+    {
+      "id": "deed3497",
+      "category": "cryptarithm_guess",
+      "gold": "\\^]]",
+      "predicted": "\\^]]",
+      "correct": true,
+      "gen_chars": 1498,
+      "gen_tokens": 595
+    },
+    {
+      "id": "0fcf912a",
+      "category": "cryptarithm_guess",
+      "gold": "|#&!",
+      "predicted": "|#&!",
+      "correct": true,
+      "gen_chars": 1356,
+      "gen_tokens": 533
+    },
+    {
+      "id": "c7844441",
+      "category": "cryptarithm_guess",
+      "gold": ":/$^",
+      "predicted": ":/$^",
+      "correct": true,
+      "gen_chars": 1510,
+      "gen_tokens": 611
+    },
+    {
+      "id": "2e9973b7",
+      "category": "cryptarithm_guess",
+      "gold": ")\\?%",
+      "predicted": ")\\?%",
+      "correct": true,
+      "gen_chars": 1383,
+      "gen_tokens": 538
+    },
+    {
+      "id": "e38c423b",
+      "category": "cryptarithm_guess",
+      "gold": "\"(@\"",
+      "predicted": "\"(@\"",
+      "correct": true,
+      "gen_chars": 1558,
+      "gen_tokens": 623
+    },
+    {
+      "id": "6b393b81",
+      "category": "equation_numeric_deduce",
+      "gold": "4046",
+      "predicted": "4046",
+      "correct": true,
+      "gen_chars": 10891,
+      "gen_tokens": 6125
+    },
+    {
+      "id": "75645166",
+      "category": "equation_numeric_deduce",
+      "gold": "7952",
+      "predicted": "7952",
+      "correct": true,
+      "gen_chars": 10292,
+      "gen_tokens": 5669
+    },
+    {
+      "id": "620c2521",
+      "category": "equation_numeric_deduce",
+      "gold": "936",
+      "predicted": "936",
+      "correct": true,
+      "gen_chars": 10395,
+      "gen_tokens": 5688
+    },
+    {
+      "id": "18268687",
+      "category": "equation_numeric_deduce",
+      "gold": "0",
+      "predicted": "0",
+      "correct": true,
+      "gen_chars": 10556,
+      "gen_tokens": 5873
+    },
+    {
+      "id": "21261dc6",
+      "category": "equation_numeric_deduce",
+      "gold": "-25",
+      "predicted": "-25",
+      "correct": true,
+      "gen_chars": 10858,
+      "gen_tokens": 5951
+    },
+    {
+      "id": "b4a15ca6",
+      "category": "equation_numeric_deduce",
+      "gold": "301",
+      "predicted": "301",
+      "correct": true,
+      "gen_chars": 10162,
+      "gen_tokens": 5571
+    },
+    {
+      "id": "9a5b6b28",
+      "category": "equation_numeric_deduce",
+      "gold": "^22",
+      "predicted": "^22",
+      "correct": true,
+      "gen_chars": 11018,
+      "gen_tokens": 6104
+    },
+    {
+      "id": "94b92001",
+      "category": "equation_numeric_deduce",
+      "gold": "801",
+      "predicted": "801",
+      "correct": true,
+      "gen_chars": 10223,
+      "gen_tokens": 5564
+    },
+    {
+      "id": "1d6c587d",
+      "category": "equation_numeric_deduce",
+      "gold": "6163",
+      "predicted": "6163",
+      "correct": true,
+      "gen_chars": 10109,
+      "gen_tokens": 5554
+    },
+    {
+      "id": "26b716ed",
+      "category": "equation_numeric_deduce",
+      "gold": "36",
+      "predicted": "36",
+      "correct": true,
+      "gen_chars": 10716,
+      "gen_tokens": 6026
+    },
+    {
+      "id": "759cbdde",
+      "category": "equation_numeric_deduce",
+      "gold": "211",
+      "predicted": "211",
+      "correct": true,
+      "gen_chars": 10025,
+      "gen_tokens": 5424
+    },
+    {
+      "id": "6da9eb9a",
+      "category": "equation_numeric_deduce",
+      "gold": "2664",
+      "predicted": "2664",
+      "correct": true,
+      "gen_chars": 10551,
+      "gen_tokens": 5873
+    },
+    {
+      "id": "b3ae7f39",
+      "category": "equation_numeric_deduce",
+      "gold": "801",
+      "predicted": "801",
+      "correct": true,
+      "gen_chars": 10185,
+      "gen_tokens": 5587
+    },
+    {
+      "id": "164b3241",
+      "category": "equation_numeric_deduce",
+      "gold": "52",
+      "predicted": "52",
+      "correct": true,
+      "gen_chars": 10283,
+      "gen_tokens": 5710
+    },
+    {
+      "id": "6f37d7be",
+      "category": "equation_numeric_deduce",
+      "gold": "01",
+      "predicted": "01",
+      "correct": true,
+      "gen_chars": 12222,
+      "gen_tokens": 6907
+    },
+    {
+      "id": "207ab66f",
+      "category": "equation_numeric_deduce",
+      "gold": "2815",
+      "predicted": "2815",
+      "correct": true,
+      "gen_chars": 10687,
+      "gen_tokens": 5929
+    },
+    {
+      "id": "ddb9aafd",
+      "category": "equation_numeric_deduce",
+      "gold": "5544",
+      "predicted": "5544",
+      "correct": true,
+      "gen_chars": 10095,
+      "gen_tokens": 5487
+    },
+    {
+      "id": "f94810f5",
+      "category": "equation_numeric_deduce",
+      "gold": "1592",
+      "predicted": "1592",
+      "correct": true,
+      "gen_chars": 10413,
+      "gen_tokens": 5707
+    },
+    {
+      "id": "37f04e3e",
+      "category": "equation_numeric_deduce",
+      "gold": "0092",
+      "predicted": "0092",
+      "correct": true,
+      "gen_chars": 10452,
+      "gen_tokens": 5791
+    },
+    {
+      "id": "cf356d18",
+      "category": "equation_numeric_deduce",
+      "gold": "6",
+      "predicted": "6",
+      "correct": true,
+      "gen_chars": 10756,
+      "gen_tokens": 5992
+    },
+    {
+      "id": "f333b67f",
+      "category": "equation_numeric_deduce",
+      "gold": "100",
+      "predicted": "100",
+      "correct": true,
+      "gen_chars": 10057,
+      "gen_tokens": 5438
+    },
+    {
+      "id": "614408ea",
+      "category": "equation_numeric_deduce",
+      "gold": "38",
+      "predicted": "38",
+      "correct": true,
+      "gen_chars": 10346,
+      "gen_tokens": 5657
+    },
+    {
+      "id": "4c19c1cb",
+      "category": "equation_numeric_deduce",
+      "gold": "0774",
+      "predicted": "0774",
+      "correct": true,
+      "gen_chars": 10512,
+      "gen_tokens": 5856
+    },
+    {
+      "id": "0f0536de",
+      "category": "equation_numeric_deduce",
+      "gold": "2376",
+      "predicted": "2376",
+      "correct": true,
+      "gen_chars": 10198,
+      "gen_tokens": 5565
+    },
+    {
+      "id": "aa7f06f4",
+      "category": "equation_numeric_deduce",
+      "gold": "3212",
+      "predicted": "3212",
+      "correct": true,
+      "gen_chars": 10340,
+      "gen_tokens": 5646
+    },
+    {
+      "id": "c541eb82",
+      "category": "equation_numeric_deduce",
+      "gold": "-01",
+      "predicted": "-01",
+      "correct": true,
+      "gen_chars": 11278,
+      "gen_tokens": 6349
+    },
+    {
+      "id": "f299569f",
+      "category": "equation_numeric_deduce",
+      "gold": "7992",
+      "predicted": "7992",
+      "correct": true,
+      "gen_chars": 10167,
+      "gen_tokens": 5555
+    },
+    {
+      "id": "93481650",
+      "category": "equation_numeric_deduce",
+      "gold": "04",
+      "predicted": "04",
+      "correct": true,
+      "gen_chars": 10981,
+      "gen_tokens": 6218
+    },
+    {
+      "id": "d78128b2",
+      "category": "equation_numeric_deduce",
+      "gold": "52",
+      "predicted": "52",
+      "correct": true,
+      "gen_chars": 11541,
+      "gen_tokens": 6496
+    },
+    {
+      "id": "b03ab026",
+      "category": "equation_numeric_deduce",
+      "gold": "74",
+      "predicted": "74",
+      "correct": true,
+      "gen_chars": 10334,
+      "gen_tokens": 5595
+    },
+    {
+      "id": "93d1c7eb",
+      "category": "equation_numeric_deduce",
+      "gold": "0154",
+      "predicted": "0154",
+      "correct": true,
+      "gen_chars": 10254,
+      "gen_tokens": 5560
+    },
+    {
+      "id": "74fff108",
+      "category": "equation_numeric_deduce",
+      "gold": "49",
+      "predicted": "49",
+      "correct": true,
+      "gen_chars": 10285,
+      "gen_tokens": 5600
+    },
+    {
+      "id": "47c368d8",
+      "category": "equation_numeric_deduce",
+      "gold": "851",
+      "predicted": "851",
+      "correct": true,
+      "gen_chars": 10432,
+      "gen_tokens": 5786
+    },
+    {
+      "id": "c4f66ede",
+      "category": "equation_numeric_deduce",
+      "gold": "6125",
+      "predicted": "6125",
+      "correct": true,
+      "gen_chars": 10537,
+      "gen_tokens": 5856
+    },
+    {
+      "id": "09302769",
+      "category": "equation_numeric_deduce",
+      "gold": "182",
+      "predicted": "182",
+      "correct": true,
+      "gen_chars": 9910,
+      "gen_tokens": 5380
+    },
+    {
+      "id": "ce507d39",
+      "category": "equation_numeric_deduce",
+      "gold": "2861",
+      "predicted": "2861",
+      "correct": true,
+      "gen_chars": 10549,
+      "gen_tokens": 5882
+    },
+    {
+      "id": "f4ecefa4",
+      "category": "equation_numeric_deduce",
+      "gold": "86",
+      "predicted": "86",
+      "correct": true,
+      "gen_chars": 10307,
+      "gen_tokens": 5734
+    },
+    {
+      "id": "5fe8d710",
+      "category": "equation_numeric_deduce",
+      "gold": "281",
+      "predicted": "281",
+      "correct": true,
+      "gen_chars": 10522,
+      "gen_tokens": 5854
+    },
+    {
+      "id": "dc73d295",
+      "category": "equation_numeric_deduce",
+      "gold": "86",
+      "predicted": "86",
+      "correct": true,
+      "gen_chars": 10365,
+      "gen_tokens": 5706
+    },
+    {
+      "id": "324f918b",
+      "category": "equation_numeric_deduce",
+      "gold": "108",
+      "predicted": "108",
+      "correct": true,
+      "gen_chars": 10199,
+      "gen_tokens": 5587
+    },
+    {
+      "id": "6cdc3a9f",
+      "category": "equation_numeric_deduce",
+      "gold": "3268",
+      "predicted": "3268",
+      "correct": true,
+      "gen_chars": 10336,
+      "gen_tokens": 5676
+    },
+    {
+      "id": "e4b6ce82",
+      "category": "equation_numeric_deduce",
+      "gold": "669",
+      "predicted": "669",
+      "correct": true,
+      "gen_chars": 10469,
+      "gen_tokens": 5792
+    },
+    {
+      "id": "84af5d7e",
+      "category": "equation_numeric_deduce",
+      "gold": "6155",
+      "predicted": "5516",
+      "correct": false,
+      "gen_chars": 9804,
+      "gen_tokens": 5320
+    },
+    {
+      "id": "01cd504a",
+      "category": "equation_numeric_deduce",
+      "gold": "6644",
+      "predicted": "6644",
+      "correct": true,
+      "gen_chars": 10178,
+      "gen_tokens": 5571
+    },
+    {
+      "id": "79acd75c",
+      "category": "equation_numeric_deduce",
+      "gold": "8613",
+      "predicted": "8613",
+      "correct": true,
+      "gen_chars": 10763,
+      "gen_tokens": 6045
+    },
+    {
+      "id": "5a763686",
+      "category": "equation_numeric_deduce",
+      "gold": "7495",
+      "predicted": "7495",
+      "correct": true,
+      "gen_chars": 10250,
+      "gen_tokens": 5621
+    },
+    {
+      "id": "ca8929f5",
+      "category": "equation_numeric_deduce",
+      "gold": "49",
+      "predicted": "49",
+      "correct": true,
+      "gen_chars": 10238,
+      "gen_tokens": 5544
+    },
+    {
+      "id": "4d92de08",
+      "category": "equation_numeric_deduce",
+      "gold": "819",
+      "predicted": "819",
+      "correct": true,
+      "gen_chars": 10194,
+      "gen_tokens": 5564
+    },
+    {
+      "id": "95afbb5f",
+      "category": "equation_numeric_deduce",
+      "gold": "4560",
+      "predicted": "4560",
+      "correct": true,
+      "gen_chars": 10306,
+      "gen_tokens": 5629
+    },
+    {
+      "id": "c37a2a23",
+      "category": "equation_numeric_deduce",
+      "gold": "5850",
+      "predicted": "5850",
+      "correct": true,
+      "gen_chars": 10458,
+      "gen_tokens": 5854
+    },
+    {
+      "id": "d44ef285",
+      "category": "equation_numeric_deduce",
+      "gold": "988",
+      "predicted": "988",
+      "correct": true,
+      "gen_chars": 10843,
+      "gen_tokens": 6107
+    },
+    {
+      "id": "b26d8818",
+      "category": "equation_numeric_deduce",
+      "gold": "5983",
+      "predicted": "5983",
+      "correct": true,
+      "gen_chars": 10563,
+      "gen_tokens": 5905
+    },
+    {
+      "id": "026106f5",
+      "category": "equation_numeric_deduce",
+      "gold": "631",
+      "predicted": "631",
+      "correct": true,
+      "gen_chars": 10134,
+      "gen_tokens": 5474
+    },
+    {
+      "id": "dd626fd0",
+      "category": "equation_numeric_deduce",
+      "gold": "1671",
+      "predicted": "1671",
+      "correct": true,
+      "gen_chars": 10439,
+      "gen_tokens": 5726
+    },
+    {
+      "id": "a23e7ecb",
+      "category": "equation_numeric_deduce",
+      "gold": "847",
+      "predicted": "847",
+      "correct": true,
+      "gen_chars": 10460,
+      "gen_tokens": 5791
+    },
+    {
+      "id": "42553fde",
+      "category": "equation_numeric_deduce",
+      "gold": "77",
+      "predicted": "77",
+      "correct": true,
+      "gen_chars": 10413,
+      "gen_tokens": 5739
+    },
+    {
+      "id": "7ef4d5d6",
+      "category": "equation_numeric_deduce",
+      "gold": ">42",
+      "predicted": ">42",
+      "correct": true,
+      "gen_chars": 10728,
+      "gen_tokens": 5917
+    },
+    {
+      "id": "8fad338f",
+      "category": "equation_numeric_deduce",
+      "gold": "4751",
+      "predicted": "4751",
+      "correct": true,
+      "gen_chars": 10173,
+      "gen_tokens": 5510
+    },
+    {
+      "id": "41babefd",
+      "category": "equation_numeric_deduce",
+      "gold": "127",
+      "predicted": "127",
+      "correct": true,
+      "gen_chars": 10550,
+      "gen_tokens": 5911
+    },
+    {
+      "id": "320d8d2b",
+      "category": "equation_numeric_deduce",
+      "gold": "3913",
+      "predicted": "3913",
+      "correct": true,
+      "gen_chars": 10255,
+      "gen_tokens": 5655
+    },
+    {
+      "id": "9dd8adaa",
+      "category": "equation_numeric_deduce",
+      "gold": "4308",
+      "predicted": "4308",
+      "correct": true,
+      "gen_chars": 10463,
+      "gen_tokens": 5777
+    },
+    {
+      "id": "0819520a",
+      "category": "equation_numeric_deduce",
+      "gold": "401",
+      "predicted": "401",
+      "correct": true,
+      "gen_chars": 10660,
+      "gen_tokens": 5981
+    },
+    {
+      "id": "114a8d85",
+      "category": "equation_numeric_deduce",
+      "gold": "221",
+      "predicted": "221",
+      "correct": true,
+      "gen_chars": 10709,
+      "gen_tokens": 6004
+    },
+    {
+      "id": "1bc85bd9",
+      "category": "equation_numeric_deduce",
+      "gold": "93",
+      "predicted": "93",
+      "correct": true,
+      "gen_chars": 10042,
+      "gen_tokens": 5456
+    },
+    {
+      "id": "76d2ee64",
+      "category": "equation_numeric_deduce",
+      "gold": "9402",
+      "predicted": "9402",
+      "correct": true,
+      "gen_chars": 10344,
+      "gen_tokens": 5612
+    },
+    {
+      "id": "cfa59b38",
+      "category": "equation_numeric_deduce",
+      "gold": "233",
+      "predicted": "233",
+      "correct": true,
+      "gen_chars": 10497,
+      "gen_tokens": 5877
+    },
+    {
+      "id": "845e726e",
+      "category": "equation_numeric_deduce",
+      "gold": "051",
+      "predicted": "051",
+      "correct": true,
+      "gen_chars": 10403,
+      "gen_tokens": 5757
+    },
+    {
+      "id": "4aeed935",
+      "category": "equation_numeric_deduce",
+      "gold": "1455",
+      "predicted": "1455",
+      "correct": true,
+      "gen_chars": 10340,
+      "gen_tokens": 5614
+    },
+    {
+      "id": "c2199ff2",
+      "category": "equation_numeric_deduce",
+      "gold": "1807",
+      "predicted": "1807",
+      "correct": true,
+      "gen_chars": 10193,
+      "gen_tokens": 5575
+    },
+    {
+      "id": "27cec7a9",
+      "category": "equation_numeric_deduce",
+      "gold": "3341",
+      "predicted": "3341",
+      "correct": true,
+      "gen_chars": 10684,
+      "gen_tokens": 5884
+    },
+    {
+      "id": "b1bc3731",
+      "category": "equation_numeric_deduce",
+      "gold": "63",
+      "predicted": "63",
+      "correct": true,
+      "gen_chars": 10548,
+      "gen_tokens": 5748
+    },
+    {
+      "id": "579b4607",
+      "category": "equation_numeric_deduce",
+      "gold": "16",
+      "predicted": "16",
+      "correct": true,
+      "gen_chars": 10706,
+      "gen_tokens": 5923
+    },
+    {
+      "id": "680f19b3",
+      "category": "equation_numeric_deduce",
+      "gold": "9756",
+      "predicted": "9756",
+      "correct": true,
+      "gen_chars": 10642,
+      "gen_tokens": 5857
+    },
+    {
+      "id": "1ef51442",
+      "category": "equation_numeric_deduce",
+      "gold": "8002",
+      "predicted": "8002",
+      "correct": true,
+      "gen_chars": 10569,
+      "gen_tokens": 5890
+    },
+    {
+      "id": "31eb8247",
+      "category": "equation_numeric_deduce",
+      "gold": "\"12",
+      "predicted": "\"12",
+      "correct": true,
+      "gen_chars": 10713,
+      "gen_tokens": 5886
+    },
+    {
+      "id": "7c5c7b73",
+      "category": "equation_numeric_deduce",
+      "gold": "13",
+      "predicted": "13",
+      "correct": true,
+      "gen_chars": 10049,
+      "gen_tokens": 5397
+    },
+    {
+      "id": "d67f28ad",
+      "category": "equation_numeric_deduce",
+      "gold": "131",
+      "predicted": "131",
+      "correct": true,
+      "gen_chars": 10369,
+      "gen_tokens": 5791
+    },
+    {
+      "id": "dc7a5e7b",
+      "category": "equation_numeric_deduce",
+      "gold": "4445",
+      "predicted": "4445",
+      "correct": true,
+      "gen_chars": 10526,
+      "gen_tokens": 5656
+    },
+    {
+      "id": "13892a7c",
+      "category": "equation_numeric_deduce",
+      "gold": "-85",
+      "predicted": "-85",
+      "correct": true,
+      "gen_chars": 10535,
+      "gen_tokens": 5734
+    },
+    {
+      "id": "9610985a",
+      "category": "equation_numeric_deduce",
+      "gold": "-22",
+      "predicted": "-22",
+      "correct": true,
+      "gen_chars": 10688,
+      "gen_tokens": 5838
+    },
+    {
+      "id": "209c43f0",
+      "category": "equation_numeric_deduce",
+      "gold": "101",
+      "predicted": "101",
+      "correct": true,
+      "gen_chars": 10234,
+      "gen_tokens": 5660
+    },
+    {
+      "id": "d008b0b6",
+      "category": "equation_numeric_deduce",
+      "gold": "131",
+      "predicted": "131",
+      "correct": true,
+      "gen_chars": 10361,
+      "gen_tokens": 5720
+    },
+    {
+      "id": "2fb20366",
+      "category": "equation_numeric_deduce",
+      "gold": "147",
+      "predicted": "147",
+      "correct": true,
+      "gen_chars": 11008,
+      "gen_tokens": 6205
+    },
+    {
+      "id": "90d57388",
+      "category": "equation_numeric_deduce",
+      "gold": "2615",
+      "predicted": "2615",
+      "correct": true,
+      "gen_chars": 10262,
+      "gen_tokens": 5618
+    },
+    {
+      "id": "f9983eb7",
+      "category": "equation_numeric_deduce",
+      "gold": "1983",
+      "predicted": "1983",
+      "correct": true,
+      "gen_chars": 10325,
+      "gen_tokens": 5682
+    },
+    {
+      "id": "cd94ec17",
+      "category": "equation_numeric_deduce",
+      "gold": "451",
+      "predicted": "451",
+      "correct": true,
+      "gen_chars": 10307,
+      "gen_tokens": 5543
+    },
+    {
+      "id": "936b3ae5",
+      "category": "equation_numeric_deduce",
+      "gold": "14>",
+      "predicted": "14",
+      "correct": false,
+      "gen_chars": 11650,
+      "gen_tokens": 6535
+    },
+    {
+      "id": "91488dc9",
+      "category": "equation_numeric_deduce",
+      "gold": "3431",
+      "predicted": "3431",
+      "correct": true,
+      "gen_chars": 10509,
+      "gen_tokens": 5809
+    },
+    {
+      "id": "10ff9431",
+      "category": "equation_numeric_deduce",
+      "gold": "0271",
+      "predicted": "0271",
+      "correct": true,
+      "gen_chars": 10555,
+      "gen_tokens": 5888
+    },
+    {
+      "id": "8bc6a26c",
+      "category": "equation_numeric_deduce",
+      "gold": "38",
+      "predicted": "38",
+      "correct": true,
+      "gen_chars": 10436,
+      "gen_tokens": 5755
+    },
+    {
+      "id": "743a293d",
+      "category": "equation_numeric_deduce",
+      "gold": "2432",
+      "predicted": "2432",
+      "correct": true,
+      "gen_chars": 10110,
+      "gen_tokens": 5490
+    },
+    {
+      "id": "ead8fe28",
+      "category": "equation_numeric_deduce",
+      "gold": "141",
+      "predicted": "141",
+      "correct": true,
+      "gen_chars": 10368,
+      "gen_tokens": 5733
+    },
+    {
+      "id": "d303ae8e",
+      "category": "equation_numeric_deduce",
+      "gold": "39",
+      "predicted": "39",
+      "correct": true,
+      "gen_chars": 10230,
+      "gen_tokens": 5545
+    },
+    {
+      "id": "cf517124",
+      "category": "equation_numeric_deduce",
+      "gold": "24",
+      "predicted": "24",
+      "correct": true,
+      "gen_chars": 10503,
+      "gen_tokens": 5820
+    },
+    {
+      "id": "383889e1",
+      "category": "equation_numeric_deduce",
+      "gold": "5185",
+      "predicted": "5185",
+      "correct": true,
+      "gen_chars": 10664,
+      "gen_tokens": 5899
+    },
+    {
+      "id": "b3f9a15c",
+      "category": "equation_numeric_deduce",
+      "gold": "1773",
+      "predicted": "1773",
+      "correct": true,
+      "gen_chars": 10324,
+      "gen_tokens": 5614
+    },
+    {
+      "id": "bc0935ee",
+      "category": "equation_numeric_deduce",
+      "gold": "@25",
+      "predicted": "@25",
+      "correct": true,
+      "gen_chars": 10396,
+      "gen_tokens": 5678
+    },
+    {
+      "id": "5aeb4ba5",
+      "category": "equation_numeric_deduce",
+      "gold": "3985",
+      "predicted": "3985",
+      "correct": true,
+      "gen_chars": 11205,
+      "gen_tokens": 6413
+    },
+    {
+      "id": "75032b65",
+      "category": "equation_numeric_deduce",
+      "gold": "27",
+      "predicted": "27",
+      "correct": true,
+      "gen_chars": 10351,
+      "gen_tokens": 5727
+    },
+    {
+      "id": "2701a005",
+      "category": "equation_numeric_deduce",
+      "gold": "140",
+      "predicted": "140",
+      "correct": true,
+      "gen_chars": 10085,
+      "gen_tokens": 5549
+    },
+    {
+      "id": "e9e6b620",
+      "category": "equation_numeric_guess",
+      "gold": "25",
+      "predicted": "25",
+      "correct": true,
+      "gen_chars": 10812,
+      "gen_tokens": 5966
+    },
+    {
+      "id": "8df3daad",
+      "category": "equation_numeric_guess",
+      "gold": "34",
+      "predicted": "34",
+      "correct": true,
+      "gen_chars": 10664,
+      "gen_tokens": 5800
+    },
+    {
+      "id": "6e6401d7",
+      "category": "equation_numeric_guess",
+      "gold": "1",
+      "predicted": "1",
+      "correct": true,
+      "gen_chars": 10927,
+      "gen_tokens": 6060
+    },
+    {
+      "id": "b7ad0671",
+      "category": "equation_numeric_guess",
+      "gold": "16",
+      "predicted": "16",
+      "correct": true,
+      "gen_chars": 10721,
+      "gen_tokens": 5879
+    },
+    {
+      "id": "662fd21c",
+      "category": "equation_numeric_guess",
+      "gold": "17",
+      "predicted": "17",
+      "correct": true,
+      "gen_chars": 10607,
+      "gen_tokens": 5797
+    },
+    {
+      "id": "be877da5",
+      "category": "equation_numeric_guess",
+      "gold": "02",
+      "predicted": "2",
+      "correct": true,
+      "gen_chars": 10632,
+      "gen_tokens": 5810
+    },
+    {
+      "id": "9c91b226",
+      "category": "equation_numeric_guess",
+      "gold": "03",
+      "predicted": "3",
+      "correct": true,
+      "gen_chars": 10547,
+      "gen_tokens": 5742
+    },
+    {
+      "id": "dc178d1c",
+      "category": "equation_numeric_guess",
+      "gold": "04",
+      "predicted": "4",
+      "correct": true,
+      "gen_chars": 10886,
+      "gen_tokens": 5997
+    },
+    {
+      "id": "66a0856f",
+      "category": "equation_numeric_guess",
+      "gold": "38",
+      "predicted": "38",
+      "correct": true,
+      "gen_chars": 10948,
+      "gen_tokens": 6022
+    },
+    {
+      "id": "8ae8e12a",
+      "category": "equation_numeric_guess",
+      "gold": "9",
+      "predicted": "9",
+      "correct": true,
+      "gen_chars": 10676,
+      "gen_tokens": 5823
+    },
+    {
+      "id": "260f20c1",
+      "category": "equation_numeric_guess",
+      "gold": "43",
+      "predicted": "43",
+      "correct": true,
+      "gen_chars": 10600,
+      "gen_tokens": 5803
+    },
+    {
+      "id": "4e840a1a",
+      "category": "equation_numeric_guess",
+      "gold": "38",
+      "predicted": "38",
+      "correct": true,
+      "gen_chars": 10785,
+      "gen_tokens": 5956
+    },
+    {
+      "id": "e7b87b82",
+      "category": "equation_numeric_guess",
+      "gold": "10",
+      "predicted": "10",
+      "correct": true,
+      "gen_chars": 11122,
+      "gen_tokens": 6215
+    },
+    {
+      "id": "ef1b13ac",
+      "category": "equation_numeric_guess",
+      "gold": "8",
+      "predicted": "8",
+      "correct": true,
+      "gen_chars": 10460,
+      "gen_tokens": 5686
+    },
+    {
+      "id": "c763054a",
+      "category": "equation_numeric_guess",
+      "gold": "85",
+      "predicted": "85",
+      "correct": true,
+      "gen_chars": 11447,
+      "gen_tokens": 6436
+    },
+    {
+      "id": "5d89a09c",
+      "category": "equation_numeric_guess",
+      "gold": "0",
+      "predicted": "0",
+      "correct": true,
+      "gen_chars": 11284,
+      "gen_tokens": 6335
+    },
+    {
+      "id": "69fe4b0d",
+      "category": "equation_numeric_guess",
+      "gold": "59",
+      "predicted": "59",
+      "correct": true,
+      "gen_chars": 10983,
+      "gen_tokens": 6107
+    },
+    {
+      "id": "7c0c5227",
+      "category": "equation_numeric_guess",
+      "gold": "14",
+      "predicted": "14",
+      "correct": true,
+      "gen_chars": 10664,
+      "gen_tokens": 5841
+    },
+    {
+      "id": "9fa9ecdc",
+      "category": "equation_numeric_guess",
+      "gold": "36",
+      "predicted": "36",
+      "correct": true,
+      "gen_chars": 10901,
+      "gen_tokens": 6052
+    },
+    {
+      "id": "83f2724b",
+      "category": "equation_numeric_guess",
+      "gold": "22",
+      "predicted": "22",
+      "correct": true,
+      "gen_chars": 10971,
+      "gen_tokens": 6079
+    },
+    {
+      "id": "32a31236",
+      "category": "equation_numeric_guess",
+      "gold": "44",
+      "predicted": "44",
+      "correct": true,
+      "gen_chars": 10953,
+      "gen_tokens": 6041
+    },
+    {
+      "id": "8e6bc995",
+      "category": "gravity",
+      "gold": "80.45",
+      "predicted": "80.438",
+      "correct": true,
+      "gen_chars": 3019,
+      "gen_tokens": 2547
+    },
+    {
+      "id": "51ccb149",
+      "category": "gravity",
+      "gold": "210.86",
+      "predicted": "210.862",
+      "correct": true,
+      "gen_chars": 2574,
+      "gen_tokens": 2167
+    },
+    {
+      "id": "8a6d10b1",
+      "category": "gravity",
+      "gold": "23.3",
+      "predicted": "23.296",
+      "correct": true,
+      "gen_chars": 4366,
+      "gen_tokens": 3749
+    },
+    {
+      "id": "09311189",
+      "category": "gravity",
+      "gold": "101.99",
+      "predicted": "102.002",
+      "correct": true,
+      "gen_chars": 3860,
+      "gen_tokens": 3308
+    },
+    {
+      "id": "2af48539",
+      "category": "gravity",
+      "gold": "52.26",
+      "predicted": "52.253",
+      "correct": true,
+      "gen_chars": 4145,
+      "gen_tokens": 3571
+    },
+    {
+      "id": "c188c1a6",
+      "category": "gravity",
+      "gold": "70.58",
+      "predicted": "70.576",
+      "correct": true,
+      "gen_chars": 3448,
+      "gen_tokens": 2930
+    },
+    {
+      "id": "63e8b2d5",
+      "category": "gravity",
+      "gold": "5.89",
+      "predicted": "5.886",
+      "correct": true,
+      "gen_chars": 2866,
+      "gen_tokens": 2427
+    },
+    {
+      "id": "faf8e57f",
+      "category": "gravity",
+      "gold": "119.45",
+      "predicted": "119.443",
+      "correct": true,
+      "gen_chars": 4430,
+      "gen_tokens": 3829
+    },
+    {
+      "id": "b5c56f58",
+      "category": "gravity",
+      "gold": "58.18",
+      "predicted": "58.186",
+      "correct": true,
+      "gen_chars": 2918,
+      "gen_tokens": 2464
+    },
+    {
+      "id": "7ee39525",
+      "category": "gravity",
+      "gold": "145.57",
+      "predicted": "145.570",
+      "correct": true,
+      "gen_chars": 3569,
+      "gen_tokens": 3069
+    },
+    {
+      "id": "f3edbc62",
+      "category": "gravity",
+      "gold": "55.3",
+      "predicted": "55.294",
+      "correct": true,
+      "gen_chars": 3126,
+      "gen_tokens": 2671
+    },
+    {
+      "id": "f907b099",
+      "category": "gravity",
+      "gold": "41.52",
+      "predicted": "41.522",
+      "correct": true,
+      "gen_chars": 3869,
+      "gen_tokens": 3320
+    },
+    {
+      "id": "7f693bf8",
+      "category": "gravity",
+      "gold": "92.23",
+      "predicted": "92.236",
+      "correct": true,
+      "gen_chars": 3107,
+      "gen_tokens": 2632
+    },
+    {
+      "id": "4e126c61",
+      "category": "gravity",
+      "gold": "144.74",
+      "predicted": "144.737",
+      "correct": true,
+      "gen_chars": 3196,
+      "gen_tokens": 2720
+    },
+    {
+      "id": "cd42f555",
+      "category": "gravity",
+      "gold": "16.03",
+      "predicted": "16.025",
+      "correct": true,
+      "gen_chars": 4161,
+      "gen_tokens": 3576
+    },
+    {
+      "id": "cd8b5299",
+      "category": "gravity",
+      "gold": "28.88",
+      "predicted": "28.877",
+      "correct": true,
+      "gen_chars": 4733,
+      "gen_tokens": 4092
+    },
+    {
+      "id": "50eab1a0",
+      "category": "gravity",
+      "gold": "133.55",
+      "predicted": "133.541",
+      "correct": true,
+      "gen_chars": 4999,
+      "gen_tokens": 4333
+    },
+    {
+      "id": "86c05d22",
+      "category": "gravity",
+      "gold": "95.78",
+      "predicted": "95.790",
+      "correct": true,
+      "gen_chars": 3483,
+      "gen_tokens": 2979
+    },
+    {
+      "id": "878b30a1",
+      "category": "gravity",
+      "gold": "59.66",
+      "predicted": "59.650",
+      "correct": true,
+      "gen_chars": 4120,
+      "gen_tokens": 3538
+    },
+    {
+      "id": "44cbca9c",
+      "category": "gravity",
+      "gold": "18.38",
+      "predicted": "18.373",
+      "correct": true,
+      "gen_chars": 2952,
+      "gen_tokens": 2490
+    },
+    {
+      "id": "e2f56016",
+      "category": "gravity",
+      "gold": "47.86",
+      "predicted": "47.860",
+      "correct": true,
+      "gen_chars": 2148,
+      "gen_tokens": 1781
+    },
+    {
+      "id": "91258006",
+      "category": "gravity",
+      "gold": "31.48",
+      "predicted": "31.481",
+      "correct": true,
+      "gen_chars": 2226,
+      "gen_tokens": 1847
+    },
+    {
+      "id": "bf6249ea",
+      "category": "gravity",
+      "gold": "67.37",
+      "predicted": "67.382",
+      "correct": true,
+      "gen_chars": 4426,
+      "gen_tokens": 3808
+    },
+    {
+      "id": "90861ae9",
+      "category": "gravity",
+      "gold": "86.31",
+      "predicted": "86.297",
+      "correct": true,
+      "gen_chars": 3414,
+      "gen_tokens": 2932
+    },
+    {
+      "id": "1d32836c",
+      "category": "gravity",
+      "gold": "28.01",
+      "predicted": "28.005",
+      "correct": true,
+      "gen_chars": 5709,
+      "gen_tokens": 4969
+    },
+    {
+      "id": "deeb0f72",
+      "category": "gravity",
+      "gold": "48.86",
+      "predicted": "48.852",
+      "correct": true,
+      "gen_chars": 2692,
+      "gen_tokens": 2274
+    },
+    {
+      "id": "b29a4a21",
+      "category": "gravity",
+      "gold": "75.62",
+      "predicted": "75.620",
+      "correct": true,
+      "gen_chars": 4348,
+      "gen_tokens": 3763
+    },
+    {
+      "id": "d304eec8",
+      "category": "gravity",
+      "gold": "48.26",
+      "predicted": "48.261",
+      "correct": true,
+      "gen_chars": 3564,
+      "gen_tokens": 3040
+    },
+    {
+      "id": "150360a5",
+      "category": "gravity",
+      "gold": "135.48",
+      "predicted": "135.484",
+      "correct": true,
+      "gen_chars": 3998,
+      "gen_tokens": 3419
+    },
+    {
+      "id": "404f84df",
+      "category": "gravity",
+      "gold": "134.01",
+      "predicted": "134.014",
+      "correct": true,
+      "gen_chars": 3613,
+      "gen_tokens": 3087
+    },
+    {
+      "id": "22bb13b8",
+      "category": "gravity",
+      "gold": "163.25",
+      "predicted": "163.239",
+      "correct": true,
+      "gen_chars": 4988,
+      "gen_tokens": 4313
+    },
+    {
+      "id": "680b8642",
+      "category": "gravity",
+      "gold": "13.01",
+      "predicted": "13.008",
+      "correct": true,
+      "gen_chars": 4703,
+      "gen_tokens": 4062
+    },
+    {
+      "id": "a044158a",
+      "category": "gravity",
+      "gold": "86.89",
+      "predicted": "86.895",
+      "correct": true,
+      "gen_chars": 4573,
+      "gen_tokens": 3940
+    },
+    {
+      "id": "4abfaa9f",
+      "category": "gravity",
+      "gold": "148.05",
+      "predicted": "148.045",
+      "correct": true,
+      "gen_chars": 4195,
+      "gen_tokens": 3598
+    },
+    {
+      "id": "9800b586",
+      "category": "gravity",
+      "gold": "50.68",
+      "predicted": "50.666",
+      "correct": true,
+      "gen_chars": 2795,
+      "gen_tokens": 2373
+    },
+    {
+      "id": "4c718602",
+      "category": "gravity",
+      "gold": "92.71",
+      "predicted": "92.713",
+      "correct": true,
+      "gen_chars": 2889,
+      "gen_tokens": 2450
+    },
+    {
+      "id": "e9ed78f7",
+      "category": "gravity",
+      "gold": "16.39",
+      "predicted": "16.391",
+      "correct": true,
+      "gen_chars": 4394,
+      "gen_tokens": 3774
+    },
+    {
+      "id": "1b76590c",
+      "category": "gravity",
+      "gold": "195.57",
+      "predicted": "195.581",
+      "correct": true,
+      "gen_chars": 3872,
+      "gen_tokens": 3296
+    },
+    {
+      "id": "a400b3e0",
+      "category": "gravity",
+      "gold": "118.18",
+      "predicted": "118.172",
+      "correct": true,
+      "gen_chars": 2389,
+      "gen_tokens": 1997
+    },
+    {
+      "id": "0320cf76",
+      "category": "gravity",
+      "gold": "124.02",
+      "predicted": "124.017",
+      "correct": true,
+      "gen_chars": 5456,
+      "gen_tokens": 4733
+    },
+    {
+      "id": "819c48f8",
+      "category": "gravity",
+      "gold": "86.36",
+      "predicted": "86.357",
+      "correct": true,
+      "gen_chars": 4432,
+      "gen_tokens": 3826
+    },
+    {
+      "id": "086e5409",
+      "category": "gravity",
+      "gold": "48.7",
+      "predicted": "48.702",
+      "correct": true,
+      "gen_chars": 2509,
+      "gen_tokens": 2106
+    },
+    {
+      "id": "4f958913",
+      "category": "gravity",
+      "gold": "20.53",
+      "predicted": "20.527",
+      "correct": true,
+      "gen_chars": 2845,
+      "gen_tokens": 2407
+    },
+    {
+      "id": "ccbbac0e",
+      "category": "gravity",
+      "gold": "129.5",
+      "predicted": "129.511",
+      "correct": true,
+      "gen_chars": 3135,
+      "gen_tokens": 2662
+    },
+    {
+      "id": "0e897e03",
+      "category": "gravity",
+      "gold": "30.74",
+      "predicted": "30.737",
+      "correct": true,
+      "gen_chars": 4633,
+      "gen_tokens": 3998
+    },
+    {
+      "id": "28db0ae7",
+      "category": "gravity",
+      "gold": "41.74",
+      "predicted": "41.740",
+      "correct": true,
+      "gen_chars": 3176,
+      "gen_tokens": 2704
+    },
+    {
+      "id": "b5403194",
+      "category": "gravity",
+      "gold": "10.17",
+      "predicted": "10.173",
+      "correct": true,
+      "gen_chars": 2770,
+      "gen_tokens": 2337
+    },
+    {
+      "id": "71b8525d",
+      "category": "gravity",
+      "gold": "67.5",
+      "predicted": "67.497",
+      "correct": true,
+      "gen_chars": 2791,
+      "gen_tokens": 2350
+    },
+    {
+      "id": "46f8f53b",
+      "category": "gravity",
+      "gold": "55.82",
+      "predicted": "55.810",
+      "correct": true,
+      "gen_chars": 2919,
+      "gen_tokens": 2474
+    },
+    {
+      "id": "f8aa53b8",
+      "category": "gravity",
+      "gold": "32.44",
+      "predicted": "32.440",
+      "correct": true,
+      "gen_chars": 4701,
+      "gen_tokens": 4060
+    },
+    {
+      "id": "4a3e25a7",
+      "category": "gravity",
+      "gold": "60.92",
+      "predicted": "60.921",
+      "correct": true,
+      "gen_chars": 6033,
+      "gen_tokens": 5280
+    },
+    {
+      "id": "ebc369ad",
+      "category": "gravity",
+      "gold": "19.61",
+      "predicted": "19.615",
+      "correct": true,
+      "gen_chars": 3283,
+      "gen_tokens": 2795
+    },
+    {
+      "id": "5c5c570e",
+      "category": "gravity",
+      "gold": "8.7",
+      "predicted": "8.698",
+      "correct": true,
+      "gen_chars": 3638,
+      "gen_tokens": 3113
+    },
+    {
+      "id": "ca28d400",
+      "category": "gravity",
+      "gold": "36.72",
+      "predicted": "36.719",
+      "correct": true,
+      "gen_chars": 3509,
+      "gen_tokens": 3005
+    },
+    {
+      "id": "fdc51c5c",
+      "category": "gravity",
+      "gold": "21.95",
+      "predicted": "21.956",
+      "correct": true,
+      "gen_chars": 3708,
+      "gen_tokens": 3157
+    },
+    {
+      "id": "fd225d00",
+      "category": "gravity",
+      "gold": "14.53",
+      "predicted": "14.531",
+      "correct": true,
+      "gen_chars": 2757,
+      "gen_tokens": 2327
+    },
+    {
+      "id": "c4e002ab",
+      "category": "gravity",
+      "gold": "43.93",
+      "predicted": "43.929",
+      "correct": true,
+      "gen_chars": 3096,
+      "gen_tokens": 2619
+    },
+    {
+      "id": "a350865e",
+      "category": "gravity",
+      "gold": "41.36",
+      "predicted": "41.360",
+      "correct": true,
+      "gen_chars": 2936,
+      "gen_tokens": 2479
+    },
+    {
+      "id": "6d4c44d1",
+      "category": "gravity",
+      "gold": "11.95",
+      "predicted": "11.948",
+      "correct": true,
+      "gen_chars": 3691,
+      "gen_tokens": 3160
+    },
+    {
+      "id": "d61269a7",
+      "category": "gravity",
+      "gold": "85.79",
+      "predicted": "85.774",
+      "correct": true,
+      "gen_chars": 3824,
+      "gen_tokens": 3280
+    },
+    {
+      "id": "4b39e8d5",
+      "category": "gravity",
+      "gold": "200.04",
+      "predicted": "200.034",
+      "correct": true,
+      "gen_chars": 3344,
+      "gen_tokens": 2842
+    },
+    {
+      "id": "98856799",
+      "category": "gravity",
+      "gold": "107.72",
+      "predicted": "107.732",
+      "correct": true,
+      "gen_chars": 3160,
+      "gen_tokens": 2687
+    },
+    {
+      "id": "76a0c79a",
+      "category": "gravity",
+      "gold": "11.14",
+      "predicted": "11.139",
+      "correct": true,
+      "gen_chars": 3013,
+      "gen_tokens": 2556
+    },
+    {
+      "id": "d9622cb6",
+      "category": "gravity",
+      "gold": "79.87",
+      "predicted": "79.868",
+      "correct": true,
+      "gen_chars": 3465,
+      "gen_tokens": 2962
+    },
+    {
+      "id": "d0db0217",
+      "category": "gravity",
+      "gold": "21.69",
+      "predicted": "21.689",
+      "correct": true,
+      "gen_chars": 4932,
+      "gen_tokens": 4276
+    },
+    {
+      "id": "97dfd0f2",
+      "category": "gravity",
+      "gold": "157.91",
+      "predicted": "157.913",
+      "correct": true,
+      "gen_chars": 3904,
+      "gen_tokens": 3343
+    },
+    {
+      "id": "0e93fbf6",
+      "category": "gravity",
+      "gold": "19.29",
+      "predicted": "19.285",
+      "correct": true,
+      "gen_chars": 2814,
+      "gen_tokens": 2373
+    },
+    {
+      "id": "b61bb6c6",
+      "category": "gravity",
+      "gold": "7.75",
+      "predicted": "7.750",
+      "correct": true,
+      "gen_chars": 2996,
+      "gen_tokens": 2543
+    },
+    {
+      "id": "c83ef461",
+      "category": "gravity",
+      "gold": "88.25",
+      "predicted": "88.242",
+      "correct": true,
+      "gen_chars": 4785,
+      "gen_tokens": 4137
+    },
+    {
+      "id": "e6f974e9",
+      "category": "gravity",
+      "gold": "169.02",
+      "predicted": "169.018",
+      "correct": true,
+      "gen_chars": 4227,
+      "gen_tokens": 3644
+    },
+    {
+      "id": "c124f209",
+      "category": "gravity",
+      "gold": "82.45",
+      "predicted": "82.448",
+      "correct": true,
+      "gen_chars": 2453,
+      "gen_tokens": 2038
+    },
+    {
+      "id": "277cdbcf",
+      "category": "gravity",
+      "gold": "39.18",
+      "predicted": "39.174",
+      "correct": true,
+      "gen_chars": 5245,
+      "gen_tokens": 4529
+    },
+    {
+      "id": "3685d906",
+      "category": "gravity",
+      "gold": "8.76",
+      "predicted": "8.755",
+      "correct": true,
+      "gen_chars": 4991,
+      "gen_tokens": 4314
+    },
+    {
+      "id": "b8e4d24d",
+      "category": "gravity",
+      "gold": "106.61",
+      "predicted": "106.593",
+      "correct": true,
+      "gen_chars": 3368,
+      "gen_tokens": 2892
+    },
+    {
+      "id": "81042133",
+      "category": "gravity",
+      "gold": "152.24",
+      "predicted": "152.231",
+      "correct": true,
+      "gen_chars": 4386,
+      "gen_tokens": 3774
+    },
+    {
+      "id": "4f655edc",
+      "category": "gravity",
+      "gold": "101.14",
+      "predicted": "101.117",
+      "correct": true,
+      "gen_chars": 3403,
+      "gen_tokens": 2896
+    },
+    {
+      "id": "90e893ac",
+      "category": "gravity",
+      "gold": "17.59",
+      "predicted": "17.590",
+      "correct": true,
+      "gen_chars": 2344,
+      "gen_tokens": 1959
+    },
+    {
+      "id": "66d1e998",
+      "category": "gravity",
+      "gold": "58.2",
+      "predicted": "58.182",
+      "correct": true,
+      "gen_chars": 3098,
+      "gen_tokens": 2652
+    },
+    {
+      "id": "d691d4f5",
+      "category": "gravity",
+      "gold": "79.7",
+      "predicted": "79.695",
+      "correct": true,
+      "gen_chars": 3887,
+      "gen_tokens": 3328
+    },
+    {
+      "id": "6540cf61",
+      "category": "gravity",
+      "gold": "120.57",
+      "predicted": "120.569",
+      "correct": true,
+      "gen_chars": 5427,
+      "gen_tokens": 4716
+    },
+    {
+      "id": "8eecb224",
+      "category": "gravity",
+      "gold": "22.41",
+      "predicted": "22.411",
+      "correct": true,
+      "gen_chars": 3134,
+      "gen_tokens": 2651
+    },
+    {
+      "id": "8c633efd",
+      "category": "gravity",
+      "gold": "71.86",
+      "predicted": "71.852",
+      "correct": true,
+      "gen_chars": 3774,
+      "gen_tokens": 3240
+    },
+    {
+      "id": "53738ef7",
+      "category": "gravity",
+      "gold": "25.1",
+      "predicted": "25.098",
+      "correct": true,
+      "gen_chars": 2234,
+      "gen_tokens": 1861
+    },
+    {
+      "id": "ae0e57c4",
+      "category": "gravity",
+      "gold": "161.51",
+      "predicted": "161.494",
+      "correct": true,
+      "gen_chars": 4584,
+      "gen_tokens": 3954
+    },
+    {
+      "id": "3178caeb",
+      "category": "gravity",
+      "gold": "146.97",
+      "predicted": "146.974",
+      "correct": true,
+      "gen_chars": 2930,
+      "gen_tokens": 2487
+    },
+    {
+      "id": "8ed96b4b",
+      "category": "gravity",
+      "gold": "55.12",
+      "predicted": "55.118",
+      "correct": true,
+      "gen_chars": 4781,
+      "gen_tokens": 4113
+    },
+    {
+      "id": "cb59c08c",
+      "category": "gravity",
+      "gold": "112.53",
+      "predicted": "112.529",
+      "correct": true,
+      "gen_chars": 2494,
+      "gen_tokens": 2096
+    },
+    {
+      "id": "6889e19c",
+      "category": "gravity",
+      "gold": "37.48",
+      "predicted": "37.471",
+      "correct": true,
+      "gen_chars": 3458,
+      "gen_tokens": 2957
+    },
+    {
+      "id": "31ea69a9",
+      "category": "gravity",
+      "gold": "27.99",
+      "predicted": "27.987",
+      "correct": true,
+      "gen_chars": 3948,
+      "gen_tokens": 3378
+    },
+    {
+      "id": "5935abb1",
+      "category": "gravity",
+      "gold": "166.36",
+      "predicted": "166.363",
+      "correct": true,
+      "gen_chars": 4025,
+      "gen_tokens": 3466
+    },
+    {
+      "id": "6eb182f1",
+      "category": "gravity",
+      "gold": "85.85",
+      "predicted": "85.852",
+      "correct": true,
+      "gen_chars": 5365,
+      "gen_tokens": 4660
+    },
+    {
+      "id": "8a345538",
+      "category": "gravity",
+      "gold": "57.42",
+      "predicted": "57.417",
+      "correct": true,
+      "gen_chars": 4289,
+      "gen_tokens": 3695
+    },
+    {
+      "id": "62380ed2",
+      "category": "gravity",
+      "gold": "91.59",
+      "predicted": "91.595",
+      "correct": true,
+      "gen_chars": 3292,
+      "gen_tokens": 2776
+    },
+    {
+      "id": "7dc294d8",
+      "category": "gravity",
+      "gold": "71.75",
+      "predicted": "71.764",
+      "correct": true,
+      "gen_chars": 3124,
+      "gen_tokens": 2663
+    },
+    {
+      "id": "f61f3d46",
+      "category": "gravity",
+      "gold": "63.24",
+      "predicted": "63.218",
+      "correct": true,
+      "gen_chars": 2400,
+      "gen_tokens": 2011
+    },
+    {
+      "id": "e406f8e6",
+      "category": "gravity",
+      "gold": "36.28",
+      "predicted": "36.281",
+      "correct": true,
+      "gen_chars": 3991,
+      "gen_tokens": 3407
+    },
+    {
+      "id": "d29824cf",
+      "category": "gravity",
+      "gold": "45.6",
+      "predicted": "45.595",
+      "correct": true,
+      "gen_chars": 4804,
+      "gen_tokens": 4160
+    },
+    {
+      "id": "1e0d1322",
+      "category": "gravity",
+      "gold": "10.13",
+      "predicted": "10.127",
+      "correct": true,
+      "gen_chars": 2560,
+      "gen_tokens": 2152
+    },
+    {
+      "id": "97d27023",
+      "category": "gravity",
+      "gold": "8.09",
+      "predicted": "8.085",
+      "correct": true,
+      "gen_chars": 3170,
+      "gen_tokens": 2693
+    },
+    {
+      "id": "8ece2bda",
+      "category": "gravity",
+      "gold": "23.41",
+      "predicted": "23.408",
+      "correct": true,
+      "gen_chars": 3782,
+      "gen_tokens": 3248
+    },
+    {
+      "id": "b8496b92",
+      "category": "numeral",
+      "gold": "L",
+      "predicted": "L",
+      "correct": true,
+      "gen_chars": 1537,
+      "gen_tokens": 918
+    },
+    {
+      "id": "c1935859",
+      "category": "numeral",
+      "gold": "XIII",
+      "predicted": "XIII",
+      "correct": true,
+      "gen_chars": 1629,
+      "gen_tokens": 958
+    },
+    {
+      "id": "2f6f8725",
+      "category": "numeral",
+      "gold": "XVII",
+      "predicted": "XVII",
+      "correct": true,
+      "gen_chars": 1612,
+      "gen_tokens": 950
+    },
+    {
+      "id": "92cabcca",
+      "category": "numeral",
+      "gold": "XVII",
+      "predicted": "XVII",
+      "correct": true,
+      "gen_chars": 1630,
+      "gen_tokens": 961
+    },
+    {
+      "id": "91dec13c",
+      "category": "numeral",
+      "gold": "LIII",
+      "predicted": "LIII",
+      "correct": true,
+      "gen_chars": 1627,
+      "gen_tokens": 959
+    },
+    {
+      "id": "5de0a53d",
+      "category": "numeral",
+      "gold": "LXIX",
+      "predicted": "LXIX",
+      "correct": true,
+      "gen_chars": 1607,
+      "gen_tokens": 951
+    },
+    {
+      "id": "a5ca6cf6",
+      "category": "numeral",
+      "gold": "XCIX",
+      "predicted": "XCIX",
+      "correct": true,
+      "gen_chars": 1574,
+      "gen_tokens": 939
+    },
+    {
+      "id": "07c3a547",
+      "category": "numeral",
+      "gold": "LXVI",
+      "predicted": "LXVI",
+      "correct": true,
+      "gen_chars": 1646,
+      "gen_tokens": 972
+    },
+    {
+      "id": "792a58ee",
+      "category": "numeral",
+      "gold": "LXXVII",
+      "predicted": "LXXVII",
+      "correct": true,
+      "gen_chars": 1686,
+      "gen_tokens": 990
+    },
+    {
+      "id": "4b4984a0",
+      "category": "numeral",
+      "gold": "LXVII",
+      "predicted": "LXVII",
+      "correct": true,
+      "gen_chars": 1658,
+      "gen_tokens": 978
+    },
+    {
+      "id": "8bb67cbd",
+      "category": "numeral",
+      "gold": "LXXXV",
+      "predicted": "LXXXV",
+      "correct": true,
+      "gen_chars": 1667,
+      "gen_tokens": 988
+    },
+    {
+      "id": "b15a1ff8",
+      "category": "numeral",
+      "gold": "XLIX",
+      "predicted": "XLIX",
+      "correct": true,
+      "gen_chars": 1561,
+      "gen_tokens": 926
+    },
+    {
+      "id": "4b15b4f2",
+      "category": "numeral",
+      "gold": "XIX",
+      "predicted": "XIX",
+      "correct": true,
+      "gen_chars": 1565,
+      "gen_tokens": 930
+    },
+    {
+      "id": "6d4e39cb",
+      "category": "numeral",
+      "gold": "II",
+      "predicted": "II",
+      "correct": true,
+      "gen_chars": 1558,
+      "gen_tokens": 927
+    },
+    {
+      "id": "2ed54b3f",
+      "category": "numeral",
+      "gold": "V",
+      "predicted": "V",
+      "correct": true,
+      "gen_chars": 1536,
+      "gen_tokens": 918
+    },
+    {
+      "id": "7163d1f6",
+      "category": "numeral",
+      "gold": "XV",
+      "predicted": "XV",
+      "correct": true,
+      "gen_chars": 1578,
+      "gen_tokens": 940
+    },
+    {
+      "id": "ede7dc2b",
+      "category": "numeral",
+      "gold": "XXXVI",
+      "predicted": "XXXVI",
+      "correct": true,
+      "gen_chars": 1680,
+      "gen_tokens": 990
+    },
+    {
+      "id": "360ea139",
+      "category": "numeral",
+      "gold": "XIII",
+      "predicted": "XIII",
+      "correct": true,
+      "gen_chars": 1644,
+      "gen_tokens": 970
+    },
+    {
+      "id": "360b11e2",
+      "category": "numeral",
+      "gold": "XCIV",
+      "predicted": "XCIV",
+      "correct": true,
+      "gen_chars": 1572,
+      "gen_tokens": 940
+    },
+    {
+      "id": "1112ec96",
+      "category": "numeral",
+      "gold": "IV",
+      "predicted": "IV",
+      "correct": true,
+      "gen_chars": 1518,
+      "gen_tokens": 905
+    },
+    {
+      "id": "972ef18a",
+      "category": "numeral",
+      "gold": "XLII",
+      "predicted": "XLII",
+      "correct": true,
+      "gen_chars": 1584,
+      "gen_tokens": 936
+    },
+    {
+      "id": "72e3e38e",
+      "category": "numeral",
+      "gold": "LXXXI",
+      "predicted": "LXXXI",
+      "correct": true,
+      "gen_chars": 1680,
+      "gen_tokens": 992
+    },
+    {
+      "id": "63883c24",
+      "category": "numeral",
+      "gold": "XXXI",
+      "predicted": "XXXI",
+      "correct": true,
+      "gen_chars": 1651,
+      "gen_tokens": 977
+    },
+    {
+      "id": "61715884",
+      "category": "numeral",
+      "gold": "XLVI",
+      "predicted": "XLVI",
+      "correct": true,
+      "gen_chars": 1600,
+      "gen_tokens": 946
+    },
+    {
+      "id": "838981e4",
+      "category": "numeral",
+      "gold": "XCIX",
+      "predicted": "XCIX",
+      "correct": true,
+      "gen_chars": 1564,
+      "gen_tokens": 934
+    },
+    {
+      "id": "c82e47bf",
+      "category": "numeral",
+      "gold": "XXXV",
+      "predicted": "XXXV",
+      "correct": true,
+      "gen_chars": 1649,
+      "gen_tokens": 979
+    },
+    {
+      "id": "9c16fd02",
+      "category": "numeral",
+      "gold": "LXXIII",
+      "predicted": "LXXIII",
+      "correct": true,
+      "gen_chars": 1685,
+      "gen_tokens": 989
+    },
+    {
+      "id": "7727f9c4",
+      "category": "numeral",
+      "gold": "XIX",
+      "predicted": "XIX",
+      "correct": true,
+      "gen_chars": 1571,
+      "gen_tokens": 931
+    },
+    {
+      "id": "23f8e7cd",
+      "category": "numeral",
+      "gold": "XCVIII",
+      "predicted": "XCVIII",
+      "correct": true,
+      "gen_chars": 1665,
+      "gen_tokens": 980
+    },
+    {
+      "id": "aa24c0a9",
+      "category": "numeral",
+      "gold": "XXXVI",
+      "predicted": "XXXVI",
+      "correct": true,
+      "gen_chars": 1679,
+      "gen_tokens": 990
+    },
+    {
+      "id": "b2ee2241",
+      "category": "numeral",
+      "gold": "XCVI",
+      "predicted": "XCVI",
+      "correct": true,
+      "gen_chars": 1589,
+      "gen_tokens": 944
+    },
+    {
+      "id": "5157c7ea",
+      "category": "numeral",
+      "gold": "LXXXII",
+      "predicted": "LXXXII",
+      "correct": true,
+      "gen_chars": 1683,
+      "gen_tokens": 991
+    },
+    {
+      "id": "d6938f81",
+      "category": "numeral",
+      "gold": "XCI",
+      "predicted": "XCI",
+      "correct": true,
+      "gen_chars": 1576,
+      "gen_tokens": 939
+    },
+    {
+      "id": "81da0167",
+      "category": "numeral",
+      "gold": "XXXIV",
+      "predicted": "XXXIV",
+      "correct": true,
+      "gen_chars": 1630,
+      "gen_tokens": 962
+    },
+    {
+      "id": "c6fe6285",
+      "category": "numeral",
+      "gold": "XLII",
+      "predicted": "XLII",
+      "correct": true,
+      "gen_chars": 1614,
+      "gen_tokens": 958
+    },
+    {
+      "id": "0bd41b01",
+      "category": "numeral",
+      "gold": "LXXXV",
+      "predicted": "LXXXV",
+      "correct": true,
+      "gen_chars": 1659,
+      "gen_tokens": 979
+    },
+    {
+      "id": "b993173b",
+      "category": "numeral",
+      "gold": "XCIII",
+      "predicted": "XCIII",
+      "correct": true,
+      "gen_chars": 1644,
+      "gen_tokens": 972
+    },
+    {
+      "id": "2345be90",
+      "category": "numeral",
+      "gold": "XXV",
+      "predicted": "XXV",
+      "correct": true,
+      "gen_chars": 1598,
+      "gen_tokens": 951
+    },
+    {
+      "id": "e5de2bef",
+      "category": "numeral",
+      "gold": "XXXVI",
+      "predicted": "XXXVI",
+      "correct": true,
+      "gen_chars": 1662,
+      "gen_tokens": 981
+    },
+    {
+      "id": "658e7335",
+      "category": "numeral",
+      "gold": "XL",
+      "predicted": "XL",
+      "correct": true,
+      "gen_chars": 1549,
+      "gen_tokens": 924
+    },
+    {
+      "id": "f9ddf958",
+      "category": "numeral",
+      "gold": "LXI",
+      "predicted": "LXI",
+      "correct": true,
+      "gen_chars": 1608,
+      "gen_tokens": 955
+    },
+    {
+      "id": "9cb806f5",
+      "category": "numeral",
+      "gold": "LXXX",
+      "predicted": "LXXX",
+      "correct": true,
+      "gen_chars": 1648,
+      "gen_tokens": 977
+    },
+    {
+      "id": "06048616",
+      "category": "numeral",
+      "gold": "LXXI",
+      "predicted": "LXXI",
+      "correct": true,
+      "gen_chars": 1636,
+      "gen_tokens": 970
+    },
+    {
+      "id": "eb83a44c",
+      "category": "numeral",
+      "gold": "VIII",
+      "predicted": "VIII",
+      "correct": true,
+      "gen_chars": 1614,
+      "gen_tokens": 950
+    },
+    {
+      "id": "086cce4f",
+      "category": "numeral",
+      "gold": "LXXII",
+      "predicted": "LXXII",
+      "correct": true,
+      "gen_chars": 1655,
+      "gen_tokens": 976
+    },
+    {
+      "id": "3052d07f",
+      "category": "numeral",
+      "gold": "LV",
+      "predicted": "LV",
+      "correct": true,
+      "gen_chars": 1564,
+      "gen_tokens": 932
+    },
+    {
+      "id": "fe13d2e7",
+      "category": "numeral",
+      "gold": "XXIII",
+      "predicted": "XXIII",
+      "correct": true,
+      "gen_chars": 1663,
+      "gen_tokens": 980
+    },
+    {
+      "id": "4290fdab",
+      "category": "numeral",
+      "gold": "XXV",
+      "predicted": "XXV",
+      "correct": true,
+      "gen_chars": 1609,
+      "gen_tokens": 958
+    },
+    {
+      "id": "91697374",
+      "category": "numeral",
+      "gold": "X",
+      "predicted": "X",
+      "correct": true,
+      "gen_chars": 1521,
+      "gen_tokens": 907
+    },
+    {
+      "id": "d90cb50d",
+      "category": "numeral",
+      "gold": "LXXV",
+      "predicted": "LXXV",
+      "correct": true,
+      "gen_chars": 1643,
+      "gen_tokens": 974
+    },
+    {
+      "id": "2782750e",
+      "category": "numeral",
+      "gold": "XCII",
+      "predicted": "XCII",
+      "correct": true,
+      "gen_chars": 1584,
+      "gen_tokens": 941
+    },
+    {
+      "id": "5e5a5245",
+      "category": "numeral",
+      "gold": "XXI",
+      "predicted": "XXI",
+      "correct": true,
+      "gen_chars": 1588,
+      "gen_tokens": 945
+    },
+    {
+      "id": "71cd0e14",
+      "category": "numeral",
+      "gold": "XXV",
+      "predicted": "XXV",
+      "correct": true,
+      "gen_chars": 1585,
+      "gen_tokens": 944
+    },
+    {
+      "id": "50d4b49a",
+      "category": "numeral",
+      "gold": "XXXVII",
+      "predicted": "XXXVII",
+      "correct": true,
+      "gen_chars": 1686,
+      "gen_tokens": 990
+    },
+    {
+      "id": "3c3348b1",
+      "category": "numeral",
+      "gold": "LII",
+      "predicted": "LII",
+      "correct": true,
+      "gen_chars": 1596,
+      "gen_tokens": 946
+    },
+    {
+      "id": "af652c7d",
+      "category": "numeral",
+      "gold": "LXXIX",
+      "predicted": "LXXIX",
+      "correct": true,
+      "gen_chars": 1623,
+      "gen_tokens": 961
+    },
+    {
+      "id": "9b6812f4",
+      "category": "numeral",
+      "gold": "XLVI",
+      "predicted": "XLVI",
+      "correct": true,
+      "gen_chars": 1601,
+      "gen_tokens": 948
+    },
+    {
+      "id": "77b8baff",
+      "category": "numeral",
+      "gold": "VIII",
+      "predicted": "VIII",
+      "correct": true,
+      "gen_chars": 1614,
+      "gen_tokens": 949
+    },
+    {
+      "id": "9e02ebd7",
+      "category": "numeral",
+      "gold": "XXXVI",
+      "predicted": "XXXVI",
+      "correct": true,
+      "gen_chars": 1651,
+      "gen_tokens": 976
+    },
+    {
+      "id": "faae7ce4",
+      "category": "numeral",
+      "gold": "LXXVI",
+      "predicted": "LXXVI",
+      "correct": true,
+      "gen_chars": 1676,
+      "gen_tokens": 991
+    },
+    {
+      "id": "1af4f53a",
+      "category": "numeral",
+      "gold": "XXXII",
+      "predicted": "XXXII",
+      "correct": true,
+      "gen_chars": 1647,
+      "gen_tokens": 971
+    },
+    {
+      "id": "fe44dfa9",
+      "category": "numeral",
+      "gold": "XXI",
+      "predicted": "XXI",
+      "correct": true,
+      "gen_chars": 1598,
+      "gen_tokens": 951
+    },
+    {
+      "id": "a23251e6",
+      "category": "numeral",
+      "gold": "XVIII",
+      "predicted": "XVIII",
+      "correct": true,
+      "gen_chars": 1667,
+      "gen_tokens": 978
+    },
+    {
+      "id": "c185e8fe",
+      "category": "numeral",
+      "gold": "III",
+      "predicted": "III",
+      "correct": true,
+      "gen_chars": 1581,
+      "gen_tokens": 936
+    },
+    {
+      "id": "16cec7b7",
+      "category": "numeral",
+      "gold": "XCVI",
+      "predicted": "XCVI",
+      "correct": true,
+      "gen_chars": 1584,
+      "gen_tokens": 943
+    },
+    {
+      "id": "977d739d",
+      "category": "numeral",
+      "gold": "XXXIV",
+      "predicted": "XXXIV",
+      "correct": true,
+      "gen_chars": 1624,
+      "gen_tokens": 960
+    },
+    {
+      "id": "898e4973",
+      "category": "numeral",
+      "gold": "XXVIII",
+      "predicted": "XXVIII",
+      "correct": true,
+      "gen_chars": 1710,
+      "gen_tokens": 1003
+    },
+    {
+      "id": "9d6d8b52",
+      "category": "numeral",
+      "gold": "LXIII",
+      "predicted": "LXIII",
+      "correct": true,
+      "gen_chars": 1646,
+      "gen_tokens": 968
+    },
+    {
+      "id": "aff9a553",
+      "category": "numeral",
+      "gold": "XLIII",
+      "predicted": "XLIII",
+      "correct": true,
+      "gen_chars": 1632,
+      "gen_tokens": 962
+    },
+    {
+      "id": "7e4ca5bc",
+      "category": "numeral",
+      "gold": "LVI",
+      "predicted": "LVI",
+      "correct": true,
+      "gen_chars": 1589,
+      "gen_tokens": 945
+    },
+    {
+      "id": "25a2b86b",
+      "category": "numeral",
+      "gold": "XXVII",
+      "predicted": "XXVII",
+      "correct": true,
+      "gen_chars": 1650,
+      "gen_tokens": 972
+    },
+    {
+      "id": "4697ae5c",
+      "category": "numeral",
+      "gold": "XIV",
+      "predicted": "XIV",
+      "correct": true,
+      "gen_chars": 1559,
+      "gen_tokens": 922
+    },
+    {
+      "id": "5a6ed2bf",
+      "category": "numeral",
+      "gold": "C",
+      "predicted": "C",
+      "correct": true,
+      "gen_chars": 1545,
+      "gen_tokens": 924
+    },
+    {
+      "id": "9fc0cd2f",
+      "category": "numeral",
+      "gold": "XLIX",
+      "predicted": "XLIX",
+      "correct": true,
+      "gen_chars": 1582,
+      "gen_tokens": 939
+    },
+    {
+      "id": "3f953fe9",
+      "category": "numeral",
+      "gold": "LXXVIII",
+      "predicted": "LXXVIII",
+      "correct": true,
+      "gen_chars": 1725,
+      "gen_tokens": 1007
+    },
+    {
+      "id": "cd944c7a",
+      "category": "numeral",
+      "gold": "LXXIX",
+      "predicted": "LXXIX",
+      "correct": true,
+      "gen_chars": 1640,
+      "gen_tokens": 971
+    },
+    {
+      "id": "5767dcd8",
+      "category": "numeral",
+      "gold": "LXXXVI",
+      "predicted": "LXXXVI",
+      "correct": true,
+      "gen_chars": 1684,
+      "gen_tokens": 990
+    },
+    {
+      "id": "c5842a35",
+      "category": "numeral",
+      "gold": "XVI",
+      "predicted": "XVI",
+      "correct": true,
+      "gen_chars": 1581,
+      "gen_tokens": 936
+    },
+    {
+      "id": "121fdc80",
+      "category": "numeral",
+      "gold": "XIII",
+      "predicted": "XIII",
+      "correct": true,
+      "gen_chars": 1616,
+      "gen_tokens": 951
+    },
+    {
+      "id": "e43d067d",
+      "category": "numeral",
+      "gold": "LII",
+      "predicted": "LII",
+      "correct": true,
+      "gen_chars": 1583,
+      "gen_tokens": 938
+    },
+    {
+      "id": "94f2dc02",
+      "category": "numeral",
+      "gold": "LXIII",
+      "predicted": "LXIII",
+      "correct": true,
+      "gen_chars": 1663,
+      "gen_tokens": 980
+    },
+    {
+      "id": "0e7fb350",
+      "category": "numeral",
+      "gold": "XCI",
+      "predicted": "XCI",
+      "correct": true,
+      "gen_chars": 1569,
+      "gen_tokens": 936
+    },
+    {
+      "id": "6728eec3",
+      "category": "numeral",
+      "gold": "XL",
+      "predicted": "XL",
+      "correct": true,
+      "gen_chars": 1538,
+      "gen_tokens": 918
+    },
+    {
+      "id": "09b26a48",
+      "category": "numeral",
+      "gold": "LX",
+      "predicted": "LX",
+      "correct": true,
+      "gen_chars": 1562,
+      "gen_tokens": 931
+    },
+    {
+      "id": "82abdd43",
+      "category": "numeral",
+      "gold": "XXXI",
+      "predicted": "XXXI",
+      "correct": true,
+      "gen_chars": 1617,
+      "gen_tokens": 959
+    },
+    {
+      "id": "d29d899d",
+      "category": "numeral",
+      "gold": "XLVIII",
+      "predicted": "XLVIII",
+      "correct": true,
+      "gen_chars": 1648,
+      "gen_tokens": 966
+    },
+    {
+      "id": "904295f6",
+      "category": "numeral",
+      "gold": "XXIV",
+      "predicted": "XXIV",
+      "correct": true,
+      "gen_chars": 1590,
+      "gen_tokens": 943
+    },
+    {
+      "id": "5c73f8cc",
+      "category": "numeral",
+      "gold": "LX",
+      "predicted": "LX",
+      "correct": true,
+      "gen_chars": 1568,
+      "gen_tokens": 936
+    },
+    {
+      "id": "d10d6a1f",
+      "category": "numeral",
+      "gold": "LVII",
+      "predicted": "LVII",
+      "correct": true,
+      "gen_chars": 1616,
+      "gen_tokens": 953
+    },
+    {
+      "id": "d93c4bb0",
+      "category": "numeral",
+      "gold": "XCI",
+      "predicted": "XCI",
+      "correct": true,
+      "gen_chars": 1552,
+      "gen_tokens": 924
+    },
+    {
+      "id": "3b4ebafd",
+      "category": "numeral",
+      "gold": "IV",
+      "predicted": "IV",
+      "correct": true,
+      "gen_chars": 1523,
+      "gen_tokens": 908
+    },
+    {
+      "id": "93e6fcf8",
+      "category": "numeral",
+      "gold": "XIII",
+      "predicted": "XIII",
+      "correct": true,
+      "gen_chars": 1644,
+      "gen_tokens": 969
+    },
+    {
+      "id": "06c2734d",
+      "category": "numeral",
+      "gold": "XXXI",
+      "predicted": "XXXI",
+      "correct": true,
+      "gen_chars": 1649,
+      "gen_tokens": 977
+    },
+    {
+      "id": "2433c775",
+      "category": "numeral",
+      "gold": "LXXXV",
+      "predicted": "LXXXV",
+      "correct": true,
+      "gen_chars": 1685,
+      "gen_tokens": 994
+    },
+    {
+      "id": "a070715f",
+      "category": "numeral",
+      "gold": "XIX",
+      "predicted": "XIX",
+      "correct": true,
+      "gen_chars": 1578,
+      "gen_tokens": 939
+    },
+    {
+      "id": "8be3f8e3",
+      "category": "numeral",
+      "gold": "XVIII",
+      "predicted": "XVIII",
+      "correct": true,
+      "gen_chars": 1663,
+      "gen_tokens": 975
+    },
+    {
+      "id": "ff612478",
+      "category": "numeral",
+      "gold": "XXI",
+      "predicted": "XXI",
+      "correct": true,
+      "gen_chars": 1601,
+      "gen_tokens": 950
+    },
+    {
+      "id": "ca529afc",
+      "category": "numeral",
+      "gold": "LXXXIX",
+      "predicted": "LXXXIX",
+      "correct": true,
+      "gen_chars": 1661,
+      "gen_tokens": 977
+    },
+    {
+      "id": "f929abdc",
+      "category": "numeral",
+      "gold": "XCIV",
+      "predicted": "XCIV",
+      "correct": true,
+      "gen_chars": 1578,
+      "gen_tokens": 938
+    },
+    {
+      "id": "03abf270",
+      "category": "numeral",
+      "gold": "XV",
+      "predicted": "XV",
+      "correct": true,
+      "gen_chars": 1560,
+      "gen_tokens": 930
+    },
+    {
+      "id": "5776269d",
+      "category": "unit_conversion",
+      "gold": "21.82",
+      "predicted": "21.797",
+      "correct": true,
+      "gen_chars": 1672,
+      "gen_tokens": 1321
+    },
+    {
+      "id": "e6157d05",
+      "category": "unit_conversion",
+      "gold": "9.64",
+      "predicted": "9.635",
+      "correct": true,
+      "gen_chars": 2746,
+      "gen_tokens": 2287
+    },
+    {
+      "id": "383bc6d3",
+      "category": "unit_conversion",
+      "gold": "27.57",
+      "predicted": "27.558",
+      "correct": true,
+      "gen_chars": 2931,
+      "gen_tokens": 2440
+    },
+    {
+      "id": "4ce156ee",
+      "category": "unit_conversion",
+      "gold": "71.89",
+      "predicted": "71.860",
+      "correct": true,
+      "gen_chars": 3719,
+      "gen_tokens": 3144
+    },
+    {
+      "id": "fa41bbc5",
+      "category": "unit_conversion",
+      "gold": "18.00",
+      "predicted": "17.982",
+      "correct": true,
+      "gen_chars": 1744,
+      "gen_tokens": 1395
+    },
+    {
+      "id": "5e5c4b8d",
+      "category": "unit_conversion",
+      "gold": "20.73",
+      "predicted": "20.730",
+      "correct": true,
+      "gen_chars": 3461,
+      "gen_tokens": 2914
+    },
+    {
+      "id": "340f68d0",
+      "category": "unit_conversion",
+      "gold": "14.96",
+      "predicted": "14.950",
+      "correct": true,
+      "gen_chars": 1848,
+      "gen_tokens": 1484
+    },
+    {
+      "id": "7b8e2063",
+      "category": "unit_conversion",
+      "gold": "46.78",
+      "predicted": "46.780",
+      "correct": true,
+      "gen_chars": 1796,
+      "gen_tokens": 1435
+    },
+    {
+      "id": "c8e4fac7",
+      "category": "unit_conversion",
+      "gold": "32.78",
+      "predicted": "32.771",
+      "correct": true,
+      "gen_chars": 2716,
+      "gen_tokens": 2260
+    },
+    {
+      "id": "542a0c0d",
+      "category": "unit_conversion",
+      "gold": "4.19",
+      "predicted": "4.183",
+      "correct": true,
+      "gen_chars": 2052,
+      "gen_tokens": 1649
+    },
+    {
+      "id": "0be75541",
+      "category": "unit_conversion",
+      "gold": "43.71",
+      "predicted": "43.687",
+      "correct": true,
+      "gen_chars": 2224,
+      "gen_tokens": 1824
+    },
+    {
+      "id": "8755df36",
+      "category": "unit_conversion",
+      "gold": "43.05",
+      "predicted": "43.037",
+      "correct": true,
+      "gen_chars": 2674,
+      "gen_tokens": 2218
+    },
+    {
+      "id": "e17d606c",
+      "category": "unit_conversion",
+      "gold": "59.01",
+      "predicted": "58.982",
+      "correct": true,
+      "gen_chars": 1970,
+      "gen_tokens": 1586
+    },
+    {
+      "id": "420ea7ee",
+      "category": "unit_conversion",
+      "gold": "59.30",
+      "predicted": "59.267",
+      "correct": true,
+      "gen_chars": 3343,
+      "gen_tokens": 2804
+    },
+    {
+      "id": "58eb55b2",
+      "category": "unit_conversion",
+      "gold": "30.00",
+      "predicted": "29.998",
+      "correct": true,
+      "gen_chars": 2401,
+      "gen_tokens": 1981
+    },
+    {
+      "id": "ef2dec53",
+      "category": "unit_conversion",
+      "gold": "60.26",
+      "predicted": "60.244",
+      "correct": true,
+      "gen_chars": 2025,
+      "gen_tokens": 1643
+    },
+    {
+      "id": "3742dbc3",
+      "category": "unit_conversion",
+      "gold": "32.33",
+      "predicted": "32.300",
+      "correct": true,
+      "gen_chars": 3875,
+      "gen_tokens": 3283
+    },
+    {
+      "id": "74faaa05",
+      "category": "unit_conversion",
+      "gold": "28.77",
+      "predicted": "28.745",
+      "correct": true,
+      "gen_chars": 2119,
+      "gen_tokens": 1723
+    },
+    {
+      "id": "65368cc7",
+      "category": "unit_conversion",
+      "gold": "27.27",
+      "predicted": "27.258",
+      "correct": true,
+      "gen_chars": 2828,
+      "gen_tokens": 2365
+    },
+    {
+      "id": "238ce191",
+      "category": "unit_conversion",
+      "gold": "7.36",
+      "predicted": "7.351",
+      "correct": true,
+      "gen_chars": 3588,
+      "gen_tokens": 3023
+    },
+    {
+      "id": "56e1dfa5",
+      "category": "unit_conversion",
+      "gold": "33.48",
+      "predicted": "33.475",
+      "correct": true,
+      "gen_chars": 2421,
+      "gen_tokens": 1975
+    },
+    {
+      "id": "b8d28fcd",
+      "category": "unit_conversion",
+      "gold": "54.61",
+      "predicted": "54.579",
+      "correct": true,
+      "gen_chars": 1869,
+      "gen_tokens": 1494
+    },
+    {
+      "id": "3dab8c47",
+      "category": "unit_conversion",
+      "gold": "4.07",
+      "predicted": "4.067",
+      "correct": true,
+      "gen_chars": 3273,
+      "gen_tokens": 2741
+    },
+    {
+      "id": "d9d85c78",
+      "category": "unit_conversion",
+      "gold": "92.16",
+      "predicted": "92.160",
+      "correct": true,
+      "gen_chars": 1055,
+      "gen_tokens": 772
+    },
+    {
+      "id": "c2eab4d7",
+      "category": "unit_conversion",
+      "gold": "43.24",
+      "predicted": "43.223",
+      "correct": true,
+      "gen_chars": 2447,
+      "gen_tokens": 2001
+    },
+    {
+      "id": "a2099412",
+      "category": "unit_conversion",
+      "gold": "44.06",
+      "predicted": "44.049",
+      "correct": true,
+      "gen_chars": 1512,
+      "gen_tokens": 1184
+    },
+    {
+      "id": "efa77fa0",
+      "category": "unit_conversion",
+      "gold": "39.42",
+      "predicted": "39.402",
+      "correct": true,
+      "gen_chars": 4095,
+      "gen_tokens": 3478
+    },
+    {
+      "id": "210f5249",
+      "category": "unit_conversion",
+      "gold": "25.23",
+      "predicted": "25.210",
+      "correct": true,
+      "gen_chars": 4326,
+      "gen_tokens": 3689
+    },
+    {
+      "id": "272bb510",
+      "category": "unit_conversion",
+      "gold": "50.20",
+      "predicted": "50.180",
+      "correct": true,
+      "gen_chars": 3303,
+      "gen_tokens": 2767
+    },
+    {
+      "id": "589f4e37",
+      "category": "unit_conversion",
+      "gold": "21.20",
+      "predicted": "21.194",
+      "correct": true,
+      "gen_chars": 3927,
+      "gen_tokens": 3331
+    },
+    {
+      "id": "74016148",
+      "category": "unit_conversion",
+      "gold": "11.74",
+      "predicted": "11.733",
+      "correct": true,
+      "gen_chars": 3652,
+      "gen_tokens": 3087
+    },
+    {
+      "id": "10e3585f",
+      "category": "unit_conversion",
+      "gold": "24.11",
+      "predicted": "24.091",
+      "correct": true,
+      "gen_chars": 1819,
+      "gen_tokens": 1459
+    },
+    {
+      "id": "4ef4e95f",
+      "category": "unit_conversion",
+      "gold": "13.22",
+      "predicted": "13.202",
+      "correct": true,
+      "gen_chars": 2997,
+      "gen_tokens": 2509
+    },
+    {
+      "id": "d566ff0e",
+      "category": "unit_conversion",
+      "gold": "17.44",
+      "predicted": "17.443",
+      "correct": true,
+      "gen_chars": 2840,
+      "gen_tokens": 2367
+    },
+    {
+      "id": "85212526",
+      "category": "unit_conversion",
+      "gold": "45.43",
+      "predicted": "45.410",
+      "correct": true,
+      "gen_chars": 1613,
+      "gen_tokens": 1276
+    },
+    {
+      "id": "6c75859f",
+      "category": "unit_conversion",
+      "gold": "23.31",
+      "predicted": "23.304",
+      "correct": true,
+      "gen_chars": 3142,
+      "gen_tokens": 2636
+    },
+    {
+      "id": "b0e8cd3e",
+      "category": "unit_conversion",
+      "gold": "41.03",
+      "predicted": "41.001",
+      "correct": true,
+      "gen_chars": 2674,
+      "gen_tokens": 2229
+    },
+    {
+      "id": "44166b63",
+      "category": "unit_conversion",
+      "gold": "29.00",
+      "predicted": "28.994",
+      "correct": true,
+      "gen_chars": 3844,
+      "gen_tokens": 3263
+    },
+    {
+      "id": "a937daa1",
+      "category": "unit_conversion",
+      "gold": "26.88",
+      "predicted": "26.857",
+      "correct": true,
+      "gen_chars": 2178,
+      "gen_tokens": 1782
+    },
+    {
+      "id": "0cbe2c1b",
+      "category": "unit_conversion",
+      "gold": "19.74",
+      "predicted": "19.728",
+      "correct": true,
+      "gen_chars": 3268,
+      "gen_tokens": 2744
+    },
+    {
+      "id": "520b6879",
+      "category": "unit_conversion",
+      "gold": "35.61",
+      "predicted": "35.610",
+      "correct": true,
+      "gen_chars": 2936,
+      "gen_tokens": 2456
+    },
+    {
+      "id": "3936fa34",
+      "category": "unit_conversion",
+      "gold": "18.04",
+      "predicted": "18.029",
+      "correct": true,
+      "gen_chars": 2654,
+      "gen_tokens": 2204
+    },
+    {
+      "id": "9125cb6d",
+      "category": "unit_conversion",
+      "gold": "14.89",
+      "predicted": "14.873",
+      "correct": true,
+      "gen_chars": 3234,
+      "gen_tokens": 2722
+    },
+    {
+      "id": "125e2a23",
+      "category": "unit_conversion",
+      "gold": "55.07",
+      "predicted": "55.065",
+      "correct": true,
+      "gen_chars": 2947,
+      "gen_tokens": 2458
+    },
+    {
+      "id": "dbc542da",
+      "category": "unit_conversion",
+      "gold": "9.82",
+      "predicted": "9.820",
+      "correct": true,
+      "gen_chars": 969,
+      "gen_tokens": 683
+    },
+    {
+      "id": "bf2fc862",
+      "category": "unit_conversion",
+      "gold": "36.08",
+      "predicted": "36.078",
+      "correct": true,
+      "gen_chars": 2063,
+      "gen_tokens": 1670
+    },
+    {
+      "id": "4c47ddd8",
+      "category": "unit_conversion",
+      "gold": "14.01",
+      "predicted": "14.003",
+      "correct": true,
+      "gen_chars": 3640,
+      "gen_tokens": 3074
+    },
+    {
+      "id": "e244d069",
+      "category": "unit_conversion",
+      "gold": "47.96",
+      "predicted": "47.928",
+      "correct": true,
+      "gen_chars": 2348,
+      "gen_tokens": 1939
+    },
+    {
+      "id": "ef7dec9c",
+      "category": "unit_conversion",
+      "gold": "20.39",
+      "predicted": "20.386",
+      "correct": true,
+      "gen_chars": 3843,
+      "gen_tokens": 3262
+    },
+    {
+      "id": "06a9fd5b",
+      "category": "unit_conversion",
+      "gold": "36.95",
+      "predicted": "36.932",
+      "correct": true,
+      "gen_chars": 2643,
+      "gen_tokens": 2187
+    },
+    {
+      "id": "cbf00fd5",
+      "category": "unit_conversion",
+      "gold": "6.58",
+      "predicted": "6.570",
+      "correct": true,
+      "gen_chars": 2540,
+      "gen_tokens": 2097
+    },
+    {
+      "id": "0c26f842",
+      "category": "unit_conversion",
+      "gold": "9.01",
+      "predicted": "9.011",
+      "correct": true,
+      "gen_chars": 3124,
+      "gen_tokens": 2603
+    },
+    {
+      "id": "9c65e305",
+      "category": "unit_conversion",
+      "gold": "95.19",
+      "predicted": "95.168",
+      "correct": true,
+      "gen_chars": 3182,
+      "gen_tokens": 2666
+    },
+    {
+      "id": "3dce464f",
+      "category": "unit_conversion",
+      "gold": "37.36",
+      "predicted": "37.331",
+      "correct": true,
+      "gen_chars": 3177,
+      "gen_tokens": 2660
+    },
+    {
+      "id": "70854a3a",
+      "category": "unit_conversion",
+      "gold": "86.61",
+      "predicted": "86.606",
+      "correct": true,
+      "gen_chars": 4188,
+      "gen_tokens": 3565
+    },
+    {
+      "id": "4a9ee0b5",
+      "category": "unit_conversion",
+      "gold": "37.37",
+      "predicted": "37.357",
+      "correct": true,
+      "gen_chars": 2364,
+      "gen_tokens": 1932
+    },
+    {
+      "id": "812ebe7e",
+      "category": "unit_conversion",
+      "gold": "7.12",
+      "predicted": "7.109",
+      "correct": true,
+      "gen_chars": 3157,
+      "gen_tokens": 2640
+    },
+    {
+      "id": "cf0f56d2",
+      "category": "unit_conversion",
+      "gold": "42.96",
+      "predicted": "42.940",
+      "correct": true,
+      "gen_chars": 3170,
+      "gen_tokens": 2666
+    },
+    {
+      "id": "89ffdb5f",
+      "category": "unit_conversion",
+      "gold": "13.84",
+      "predicted": "13.830",
+      "correct": true,
+      "gen_chars": 3892,
+      "gen_tokens": 3300
+    },
+    {
+      "id": "66659efb",
+      "category": "unit_conversion",
+      "gold": "30.26",
+      "predicted": "30.259",
+      "correct": true,
+      "gen_chars": 3463,
+      "gen_tokens": 2918
+    },
+    {
+      "id": "8e922a0f",
+      "category": "unit_conversion",
+      "gold": "12.32",
+      "predicted": "12.319",
+      "correct": true,
+      "gen_chars": 2435,
+      "gen_tokens": 1993
+    },
+    {
+      "id": "31ec2f8e",
+      "category": "unit_conversion",
+      "gold": "21.17",
+      "predicted": "21.156",
+      "correct": true,
+      "gen_chars": 3615,
+      "gen_tokens": 3067
+    },
+    {
+      "id": "5438b782",
+      "category": "unit_conversion",
+      "gold": "24.57",
+      "predicted": "24.551",
+      "correct": true,
+      "gen_chars": 2199,
+      "gen_tokens": 1803
+    },
+    {
+      "id": "d9771d98",
+      "category": "unit_conversion",
+      "gold": "19.70",
+      "predicted": "19.690",
+      "correct": true,
+      "gen_chars": 2866,
+      "gen_tokens": 2390
+    },
+    {
+      "id": "714330e8",
+      "category": "unit_conversion",
+      "gold": "22.97",
+      "predicted": "22.963",
+      "correct": true,
+      "gen_chars": 2721,
+      "gen_tokens": 2265
+    },
+    {
+      "id": "be20c276",
+      "category": "unit_conversion",
+      "gold": "29.84",
+      "predicted": "29.832",
+      "correct": true,
+      "gen_chars": 3399,
+      "gen_tokens": 2852
+    },
+    {
+      "id": "f35aa1ea",
+      "category": "unit_conversion",
+      "gold": "24.28",
+      "predicted": "24.271",
+      "correct": true,
+      "gen_chars": 3670,
+      "gen_tokens": 3110
+    },
+    {
+      "id": "c7178491",
+      "category": "unit_conversion",
+      "gold": "11.78",
+      "predicted": "11.780",
+      "correct": true,
+      "gen_chars": 1821,
+      "gen_tokens": 1460
+    },
+    {
+      "id": "28c7a0cf",
+      "category": "unit_conversion",
+      "gold": "37.18",
+      "predicted": "37.146",
+      "correct": true,
+      "gen_chars": 1542,
+      "gen_tokens": 1211
+    },
+    {
+      "id": "f9e92cb2",
+      "category": "unit_conversion",
+      "gold": "58.32",
+      "predicted": "58.301",
+      "correct": true,
+      "gen_chars": 2215,
+      "gen_tokens": 1799
+    },
+    {
+      "id": "da13ee5e",
+      "category": "unit_conversion",
+      "gold": "20.46",
+      "predicted": "20.456",
+      "correct": true,
+      "gen_chars": 1687,
+      "gen_tokens": 1341
+    },
+    {
+      "id": "5c9bd8f6",
+      "category": "unit_conversion",
+      "gold": "58.74",
+      "predicted": "58.719",
+      "correct": true,
+      "gen_chars": 3334,
+      "gen_tokens": 2798
+    },
+    {
+      "id": "09a4e845",
+      "category": "unit_conversion",
+      "gold": "63.44",
+      "predicted": "63.419",
+      "correct": true,
+      "gen_chars": 3189,
+      "gen_tokens": 2668
+    },
+    {
+      "id": "15b1b62e",
+      "category": "unit_conversion",
+      "gold": "9.20",
+      "predicted": "9.201",
+      "correct": true,
+      "gen_chars": 3730,
+      "gen_tokens": 3153
+    },
+    {
+      "id": "1bf3f0f1",
+      "category": "unit_conversion",
+      "gold": "6.97",
+      "predicted": "6.962",
+      "correct": true,
+      "gen_chars": 1508,
+      "gen_tokens": 1177
+    },
+    {
+      "id": "8f07c5f9",
+      "category": "unit_conversion",
+      "gold": "48.03",
+      "predicted": "48.023",
+      "correct": true,
+      "gen_chars": 2988,
+      "gen_tokens": 2496
+    },
+    {
+      "id": "76c43525",
+      "category": "unit_conversion",
+      "gold": "33.37",
+      "predicted": "33.355",
+      "correct": true,
+      "gen_chars": 3315,
+      "gen_tokens": 2791
+    },
+    {
+      "id": "883a7f5d",
+      "category": "unit_conversion",
+      "gold": "19.15",
+      "predicted": "19.138",
+      "correct": true,
+      "gen_chars": 2469,
+      "gen_tokens": 2046
+    },
+    {
+      "id": "ef33fed5",
+      "category": "unit_conversion",
+      "gold": "19.09",
+      "predicted": "19.077",
+      "correct": true,
+      "gen_chars": 1817,
+      "gen_tokens": 1462
+    },
+    {
+      "id": "4bc4eb22",
+      "category": "unit_conversion",
+      "gold": "50.19",
+      "predicted": "50.182",
+      "correct": true,
+      "gen_chars": 2820,
+      "gen_tokens": 2344
+    },
+    {
+      "id": "34f18cf1",
+      "category": "unit_conversion",
+      "gold": "39.20",
+      "predicted": "39.182",
+      "correct": true,
+      "gen_chars": 2771,
+      "gen_tokens": 2309
+    },
+    {
+      "id": "82c506bf",
+      "category": "unit_conversion",
+      "gold": "14.91",
+      "predicted": "14.899",
+      "correct": true,
+      "gen_chars": 2360,
+      "gen_tokens": 1940
+    },
+    {
+      "id": "4d6ab936",
+      "category": "unit_conversion",
+      "gold": "45.90",
+      "predicted": "45.895",
+      "correct": true,
+      "gen_chars": 4203,
+      "gen_tokens": 3577
+    },
+    {
+      "id": "ed0e359f",
+      "category": "unit_conversion",
+      "gold": "31.56",
+      "predicted": "31.547",
+      "correct": true,
+      "gen_chars": 2256,
+      "gen_tokens": 1853
+    },
+    {
+      "id": "316865b5",
+      "category": "unit_conversion",
+      "gold": "19.74",
+      "predicted": "19.737",
+      "correct": true,
+      "gen_chars": 2324,
+      "gen_tokens": 1915
+    },
+    {
+      "id": "ebb0495a",
+      "category": "unit_conversion",
+      "gold": "29.01",
+      "predicted": "29.004",
+      "correct": true,
+      "gen_chars": 3086,
+      "gen_tokens": 2572
+    },
+    {
+      "id": "4b5d3ac2",
+      "category": "unit_conversion",
+      "gold": "24.22",
+      "predicted": "24.205",
+      "correct": true,
+      "gen_chars": 2694,
+      "gen_tokens": 2235
+    },
+    {
+      "id": "f04a63e5",
+      "category": "unit_conversion",
+      "gold": "23.37",
+      "predicted": "23.360",
+      "correct": true,
+      "gen_chars": 2153,
+      "gen_tokens": 1762
+    },
+    {
+      "id": "c956a7f7",
+      "category": "unit_conversion",
+      "gold": "53.92",
+      "predicted": "53.895",
+      "correct": true,
+      "gen_chars": 1924,
+      "gen_tokens": 1551
+    },
+    {
+      "id": "c1775d35",
+      "category": "unit_conversion",
+      "gold": "22.22",
+      "predicted": "22.213",
+      "correct": true,
+      "gen_chars": 2337,
+      "gen_tokens": 1917
+    },
+    {
+      "id": "2ee6c3f2",
+      "category": "unit_conversion",
+      "gold": "56.87",
+      "predicted": "56.868",
+      "correct": true,
+      "gen_chars": 2398,
+      "gen_tokens": 1980
+    },
+    {
+      "id": "99e327ac",
+      "category": "unit_conversion",
+      "gold": "39.04",
+      "predicted": "39.014",
+      "correct": true,
+      "gen_chars": 2024,
+      "gen_tokens": 1639
+    },
+    {
+      "id": "65ccc7a7",
+      "category": "unit_conversion",
+      "gold": "19.55",
+      "predicted": "19.545",
+      "correct": true,
+      "gen_chars": 2185,
+      "gen_tokens": 1772
+    },
+    {
+      "id": "73b7e6d3",
+      "category": "unit_conversion",
+      "gold": "18.73",
+      "predicted": "18.712",
+      "correct": true,
+      "gen_chars": 1488,
+      "gen_tokens": 1166
+    },
+    {
+      "id": "ff20f28e",
+      "category": "unit_conversion",
+      "gold": "17.55",
+      "predicted": "17.538",
+      "correct": true,
+      "gen_chars": 3230,
+      "gen_tokens": 2713
+    },
+    {
+      "id": "0fd8b43e",
+      "category": "unit_conversion",
+      "gold": "30.22",
+      "predicted": "30.188",
+      "correct": true,
+      "gen_chars": 2227,
+      "gen_tokens": 1819
+    },
+    {
+      "id": "5ab341a8",
+      "category": "unit_conversion",
+      "gold": "12.04",
+      "predicted": "12.031",
+      "correct": true,
+      "gen_chars": 3411,
+      "gen_tokens": 2867
+    },
+    {
+      "id": "bde0d15d",
+      "category": "unit_conversion",
+      "gold": "6.57",
+      "predicted": "6.555",
+      "correct": true,
+      "gen_chars": 2456,
+      "gen_tokens": 2025
+    },
+    {
+      "id": "d9515aac",
+      "category": "unit_conversion",
+      "gold": "72.00",
+      "predicted": "71.996",
+      "correct": true,
+      "gen_chars": 2364,
+      "gen_tokens": 1935
+    },
+    {
+      "id": "4c08bafb",
+      "category": "unit_conversion",
+      "gold": "46.37",
+      "predicted": "46.344",
+      "correct": true,
+      "gen_chars": 2911,
+      "gen_tokens": 2420
+    }
+  ]
+}
