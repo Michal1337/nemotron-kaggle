@@ -37,6 +37,72 @@ from collections import Counter
 from pathlib import Path
 
 
+# Path to the huikang nemotron-master repo (contains reasoners/equation_numeric.py
+# etc.). Set lazily by ``_ensure_reasoners_path`` so it picks up --repo-root at
+# runtime.
+_REASONERS_REPO: Path | None = None
+
+
+def _ensure_reasoners_path(repo_root: Path) -> None:
+    """Insert ``repo_root`` on sys.path so we can import the huikang reasoners."""
+    global _REASONERS_REPO
+    repo_root = Path(repo_root).resolve()
+    if _REASONERS_REPO is not None and _REASONERS_REPO == repo_root:
+        return
+    sys.path.insert(0, str(repo_root))
+    _REASONERS_REPO = repo_root
+
+
+def _huikang_eq_num_reasoning(pid: str, category: str,
+                              examples_in: list[tuple[str, str]],
+                              query: str, predicted: str) -> str | None:
+    """Build a Problem object and dispatch to huikang's equation_numeric reasoner.
+
+    Returns the verbatim huikang reasoning text (~3-12 KB) or None if huikang's
+    reasoner couldn't find an operation in its 30-op pool (caller should fall
+    back).
+    """
+    if _REASONERS_REPO is None:
+        raise RuntimeError(
+            "_ensure_reasoners_path() not called — repo_root must be set "
+            "before any narrator that invokes huikang's reasoner."
+        )
+    from reasoners.equation_numeric import reasoning_equation_numeric
+    from reasoners.store_types import Example, Problem
+    problem = Problem(
+        id=pid,
+        category=category,  # type: ignore[arg-type]
+        examples=[Example(inp, out) for inp, out in examples_in],
+        question=query,
+        answer=predicted,
+    )
+    # huikang's reasoner has a known StopIteration bug when an operand is 0
+    # (some ops like ``max mod min`` are conditionally absent from
+    # ``_all_candidates``). Treat any exception as "couldn't reason"; caller
+    # falls back / skips.
+    try:
+        return reasoning_equation_numeric(problem)
+    except (StopIteration, ValueError, ZeroDivisionError):
+        return None
+
+
+def _huikang_cryptarithm_reasoning(pid: str, examples_in: list[tuple[str, str]],
+                                    query: str, predicted: str) -> str | None:
+    """Dispatch a concat-only cryptarithm to huikang's cryptarithm reasoner."""
+    if _REASONERS_REPO is None:
+        raise RuntimeError("_ensure_reasoners_path() must be called first")
+    from reasoners.cryptarithm import reasoning_cryptarithm
+    from reasoners.store_types import Example, Problem
+    problem = Problem(
+        id=pid,
+        category="cryptarithm_deduce",
+        examples=[Example(inp, out) for inp, out in examples_in],
+        question=query,
+        answer=predicted,
+    )
+    return reasoning_cryptarithm(problem)
+
+
 # Map our solver's op names to huikang's equation_numeric.py phrasing so the
 # model sees consistent terminology across the corpus.
 OP_NAME_TO_HUIKANG: dict[str, str] = {
@@ -374,12 +440,35 @@ def _decode_output(out: str, mapping: dict[str, int]) -> str:
     return "".join(digits)
 
 
-def narrate_pure_concat(pid: str, problem_data: dict, parsed: dict) -> str:
-    """Narrator for pure-concat problems (no symbol mapping needed).
+def narrate_pure_concat(pid: str, problem_data: dict, parsed: dict) -> str | None:
+    """Narrator for pure-concat cryptarithm — defers to huikang's reasoner.
 
-    Mirrors huikang's [reasoners/cryptarithm.py](../nemotron-master/reasoners/cryptarithm.py)
-    style: works on cipher symbols directly, shows per-example concat-vs-rev-concat
-    classification.
+    huikang's ``reasoning_cryptarithm`` handles concat-only problems (forward
+    and reverse). We just build a Problem and call it; output is bit-identical
+    to huikang's training rationales.
+
+    Returns None if huikang's reasoner produces an answer that differs from
+    Alice's verified answer — happens when the query operator is unseen in the
+    examples and huikang defaults to fwd-concat while Alice solved as rev-concat.
+    Better to skip than emit a wrong-answer rationale into training.
+    """
+    examples = parsed["examples"]
+    query = parsed["query"]
+    predicted = parsed["predicted"]
+    out = _huikang_cryptarithm_reasoning(pid, examples, query, predicted)
+    if out is None:
+        return None
+    # Verify huikang's rationale ends with the same answer as our verified solver.
+    extracted = extract_final_answer(out)
+    if extracted != predicted:
+        return None
+    return out
+
+
+def _legacy_narrate_pure_concat(pid: str, problem_data: dict, parsed: dict) -> str:
+    """Old hand-written concat narrator (kept around in case huikang's reasoner
+    returns None — typically when the input isn't a 5-char concat). Should be
+    invoked only as a last-resort fallback by narrate_cryptarithm.
     """
     examples = parsed["examples"]
     query = parsed["query"]
@@ -469,79 +558,32 @@ def narrate_pure_concat(pid: str, problem_data: dict, parsed: dict) -> str:
 
 
 def narrate_equation_numeric(pid: str, problem_data: dict, parsed: dict) -> str:
-    """Narrator for equation_numeric problems (operands are already digits).
+    """Narrator for equation_numeric problems — defers to huikang's reasoner.
 
-    Mirrors huikang's [reasoners/equation_numeric.py](../nemotron-master/reasoners/equation_numeric.py)
-    output style: no cipher crack, just operator analysis + apply to query.
+    The original v2 narrator was structurally divergent from huikang's format
+    (terse declarative blocks, no per-operator search trace), which produced
+    a corpus the model couldn't reliably learn from. We now hand the parsed
+    problem straight to ``reasoning_equation_numeric`` from
+    ``nemotron-master/reasoners/equation_numeric.py`` and emit its verbatim
+    output (~3-12 KB per problem with full "Trying common/rare operations"
+    enumerations, multiplication breakdowns, etc.).
+
+    If huikang's reasoner can't find an operation in its 30-op pool (the v2
+    solver's pool is wider), this returns None and the caller will skip the
+    problem rather than emit a degenerate rationale.
     """
-    ops = parsed["ops"]
-    mode = parsed.get("mode", "standard")
-    rev_res = parsed.get("rev_res", False)
     examples = parsed["examples"]
     query = parsed["query"]
     predicted = parsed["predicted"]
-    query_op_name = parsed.get("query_op_name")
-
-    def quote(s: str) -> str:
-        return f"【{s}】"
-
-    L: list[str] = []
-    L.append("We need to infer the transformation rule from the examples.")
-    L.append("I will put my final answer inside \\boxed{}.")
-    L.append("")
-    L.append("Examples:")
-    for inp, out in examples:
-        L.append(f"  {inp} = {out}")
-    L.append("")
-
-    # Parse operands from examples for inspection
-    import re as _re
-    eq_re = _re.compile(r"^(\d+)(\D)(\d+)$")
-    all_a_b: list[tuple[str, str, str, str]] = []
-    for inp, out in examples:
-        m = eq_re.fullmatch(inp)
-        if m:
-            all_a_b.append((m.group(1), m.group(2), m.group(3), out))
-
-    inputs_list = []
-    for a, _, b, _ in all_a_b:
-        inputs_list.extend([a, b])
-    outputs_list = [o for _, _, _, o in all_a_b]
-    L.append(f"The inputs are {', '.join(inputs_list)}")
-    L.append("")
-    L.append(f"The outputs are {', '.join(outputs_list)}")
-    L.append("")
-
-    if mode == "little_endian":
-        L.append("Treating operands as little-endian (digit-reversed) numbers.")
-        L.append("")
-    if rev_res:
-        L.append("The computed result is reversed before encoding.")
-        L.append("")
-
-    # Per-operator analysis
-    by_op: dict[str, list[tuple[str, str, str]]] = {}
-    for a, op, b, out in all_a_b:
-        by_op.setdefault(op, []).append((a, b, out))
-    for op_char, op_name in sorted(ops.items()):
-        L.append(f"Looking at operator {quote(op_char)} [{', '.join(f'{a}{op_char}{b} = {o}' for a, b, o in by_op.get(op_char, []))}]:")
-        L.append(f"  The operation is {op_name}.")
-        L.append("")
-
-    # Apply to query
-    m = eq_re.fullmatch(query)
-    if m:
-        qa, q_op, qb = m.group(1), m.group(2), m.group(3)
-        L.append(f"Applying to {query}:")
-        L.append(f"  Decoded query: {qa} {q_op} {qb}")
-        if query_op_name:
-            L.append(f"  The operation is {query_op_name}.")
-        L.append(f"  Numeric result: {quote(predicted)}")
-        L.append("")
-
-    L.append("I will now return the answer in \\boxed{}")
-    L.append(f"The answer in \\boxed{{–}} is \\boxed{{{predicted}}}")
-    return "\n".join(L)
+    category = parsed.get("category", "equation_numeric_deduce")
+    out = _huikang_eq_num_reasoning(pid, category, examples, query, predicted)
+    if out is None:
+        return None
+    # Verify final \boxed matches our verified solver answer.
+    extracted = extract_final_answer(out)
+    if not _verify(predicted, extracted):
+        return None
+    return out
 
 
 # ----------------------------------------------------------------------
@@ -923,16 +965,179 @@ def _flatten_transforms(rule: dict) -> list[str]:
     return list(ts)
 
 
-def narrate_cryptarithm(pid: str, problem_data: dict, parsed: dict) -> str:
+def _decode_cipher_pair(cipher_input: str, mapping: dict[str, int]) -> str | None:
+    """Decode a 5-char cipher input like '@%-*$' to its digit form '64-77'.
+
+    Two-character operands assumed (positions 0,1 and 3,4) with the operator at
+    position 2. Returns None if any operand symbol lacks a mapping.
+    """
+    if len(cipher_input) != 5:
+        return None
+    op_char = cipher_input[2]
+    left = cipher_input[:2]
+    right = cipher_input[3:]
+    try:
+        ld = "".join(str(mapping[c]) for c in left)
+        rd = "".join(str(mapping[c]) for c in right)
+    except KeyError:
+        return None
+    return f"{ld}{op_char}{rd}"
+
+
+def _decode_cipher_str(cipher_output: str, mapping: dict[str, int]) -> str | None:
+    """Decode a cipher string to its digit form.
+
+    Characters present in the mapping become their digit; characters absent
+    (typically the operator symbol used as a sign prefix in equation_numeric's
+    ``neg_prefix`` / ``neg_suffix`` formats) pass through unchanged so huikang's
+    reasoner can detect the sign-format pattern downstream.
+
+    Returns None only if the result would be empty.
+    """
+    decoded = []
+    for c in cipher_output:
+        if c in mapping:
+            decoded.append(str(mapping[c]))
+        else:
+            decoded.append(c)
+    out = "".join(decoded)
+    return out if out else None
+
+
+def _strip_huikang_framing(text: str) -> str:
+    """Remove huikang's opening (3 lines) + closing (3 lines) from a reasoner trace.
+
+    huikang's reasoning_equation_numeric output is structured as:
+        We need to infer the transformation rule from the examples.   <- 0
+        I will put my final answer inside \\boxed{}.                  <- 1
+                                                                       <- 2 (blank)
+        [...body...]
+                                                                       <- N-2 (blank)
+        I will now return the answer in \\boxed{}                     <- N-1
+        The answer in \\boxed{–} is \\boxed{...}                      <- N
+    """
+    lines = text.split("\n")
+    if len(lines) < 6:
+        return text
+    return "\n".join(lines[3:-3])
+
+
+def narrate_cryptarithm(pid: str, problem_data: dict, parsed: dict) -> str | None:
     """Build a huikang-style CoT reasoning string for a cryptarithm.
 
-    Mirrors the conventions in reasoner-style.md. Branches between pure-concat
-    (huikang's existing style) and arithmetic (equation_numeric-derived style).
+    Three dispatch paths:
+      * eq_num_v2 source         → equation_numeric narrator (no cipher layer)
+      * Pure-concat cryptarithm  → huikang's reasoning_cryptarithm verbatim
+      * Arithmetic cryptarithm   → decode cipher → wrap huikang's eq_num body
+                                   with a cipher-crack preamble and re-encode
+                                   postlude
     """
     # Dispatch on parsed format
     if parsed.get("_format") == "equation_numeric_v2":
         return narrate_equation_numeric(pid, problem_data, parsed)
 
+    mapping = parsed["mapping"]
+    ops = parsed["ops"]
+    rev_ops = parsed["rev_ops"]
+    rev_res = parsed["rev_res"]
+    examples = parsed["examples"]
+    query = parsed["query"]
+    predicted = parsed["predicted"]
+
+    # If no symbol mapping was needed (pure concat), use huikang's concat reasoner.
+    if not mapping:
+        out = narrate_pure_concat(pid, problem_data, parsed)
+        return out if out is not None else _legacy_narrate_pure_concat(pid, problem_data, parsed)
+
+    # Arithmetic path: decode everything to numeric form, then defer to huikang.
+    decoded_examples: list[tuple[str, str]] = []
+    for cipher_in, cipher_out in examples:
+        di = _decode_cipher_pair(cipher_in, mapping)
+        do = _decode_cipher_str(cipher_out, mapping)
+        if di is None or do is None:
+            return None
+        decoded_examples.append((di, do))
+
+    decoded_query = _decode_cipher_pair(query, mapping)
+    decoded_predicted = _decode_cipher_str(predicted, mapping)
+    if decoded_query is None or decoded_predicted is None:
+        return None
+
+    # Build the numeric Problem and let huikang's reasoner produce the search trace.
+    body_full = _huikang_eq_num_reasoning(
+        pid, "equation_numeric_deduce",
+        decoded_examples, decoded_query, decoded_predicted,
+    )
+    if body_full is None:
+        return None
+    # Verify huikang's solution matches Alice's decoded answer; skip if not
+    # (huikang may have picked a different op that happens to fit the examples
+    # but produces a different query answer).
+    extracted_numeric = extract_final_answer(body_full)
+    if not _verify(decoded_predicted, extracted_numeric):
+        return None
+    body_middle = _strip_huikang_framing(body_full)
+
+    # Cipher-crack preamble: show the cipher examples + the inferred mapping,
+    # then state the decoded form. Section labels kept short to stay close to
+    # huikang's writing style (no markdown headers, plain text + indentation).
+    L: list[str] = []
+    L.append("We need to infer the transformation rule from the examples.")
+    L.append("I will put my final answer inside \\boxed{}.")
+    L.append("")
+
+    # Cipher examples
+    L.append("Examples in cipher form:")
+    for cipher_in, cipher_out in examples:
+        L.append(f"  {_box(cipher_in)} = {_box(cipher_out)}")
+    L.append("")
+
+    # Symbol-to-digit mapping inferred from the puzzle
+    L.append("Inferred symbol-to-digit mapping:")
+    for sym in sorted(mapping):
+        L.append(f"  {_box(sym)} = {mapping[sym]}")
+    L.append("")
+
+    # Decoded numeric form of the examples
+    L.append("After substituting digits, the examples become:")
+    for (cipher_in, cipher_out), (di, do) in zip(examples, decoded_examples):
+        L.append(f"  {cipher_in} -> {di} = {do}")
+    L.append("")
+    L.append("This is now a numeric-equation problem. Let me solve it.")
+    L.append("")
+
+    # huikang's verbatim search trace on the decoded form
+    L.append(body_middle)
+    L.append("")
+
+    # Re-encode the numeric answer back to cipher symbols
+    L.append(f"The numeric answer is {decoded_predicted}. Re-encoding to cipher symbols:")
+    inverse_mapping: dict[str, str] = {}
+    for sym, dig in mapping.items():
+        inverse_mapping.setdefault(str(dig), sym)
+    cipher_chars: list[str] = []
+    for d in decoded_predicted:
+        sym = inverse_mapping.get(d)
+        if sym is None:
+            cipher_chars.append("?")
+            L.append(f"  digit {d} -> (no inverse mapping)")
+        else:
+            cipher_chars.append(sym)
+            L.append(f"  digit {d} -> {_box(sym)}")
+    # Trust the solver's encoded predicted (handles ties when two digits map to
+    # the same symbol unequally; mapping is bijective by construction but defensive).
+    L.append(f"  Cipher answer: {_box(predicted)}")
+    L.append("")
+
+    L.append("I will now return the answer in \\boxed{}")
+    L.append(f"The answer in \\boxed{{–}} is \\boxed{{{predicted}}}")
+    return "\n".join(L)
+
+
+def _legacy_narrate_cryptarithm_arith(pid: str, problem_data: dict, parsed: dict) -> str:
+    """The original (broken) arithmetic-cryptarithm narrator. Unused by default —
+    retained for diff-comparison / debugging only.
+    """
     mapping = parsed["mapping"]
     ops = parsed["ops"]
     rev_ops = parsed["rev_ops"]
@@ -1217,6 +1422,9 @@ def main() -> None:
             sys.exit("--repo-root not provided and no default found")
 
     print(f"Repo root: {repo}")
+    # Make huikang's reasoners importable so narrators can call them directly.
+    _ensure_reasoners_path(repo)
+
     inv_root = repo / "investigations"
     problems_dir = repo / "problems"
     out_dir = Path(args.output_dir) if args.output_dir else (repo / "reasoning")
