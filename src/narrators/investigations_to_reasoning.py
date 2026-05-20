@@ -582,7 +582,17 @@ def narrate_equation_numeric(pid: str, problem_data: dict, parsed: dict) -> str:
     query = parsed["query"]
     predicted = parsed["predicted"]
     category = parsed.get("category", "equation_numeric_deduce")
-    out = _huikang_eq_num_reasoning(pid, category, examples, query, predicted)
+    # Thread Alice's mode + query-op hint through (same logic as the
+    # cryptarithm path) so huikang locks onto Alice's interpretation for
+    # ambiguous example sets, and so guess-mode problems with unseen query
+    # ops get the right fallback instead of huikang's default abs_diff.
+    preferred_mode = parsed.get("mode")
+    query_op_override = _alice_query_op_override(parsed, query, examples)
+    out = _huikang_eq_num_reasoning(
+        pid, category, examples, query, predicted,
+        preferred_mode=preferred_mode,
+        query_op_override=query_op_override,
+    )
     if out is None:
         return None
     # Verify final \boxed matches our verified solver answer.
