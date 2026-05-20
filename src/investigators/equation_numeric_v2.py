@@ -464,7 +464,12 @@ def _write_investigation(target_dir: str, pid: str, data: dict, predicted: str,
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--repo-root", default=os.path.dirname(__file__) or ".")
+    p.add_argument(
+        "--repo-root",
+        default=None,
+        help="Path to the data root (contains problems.jsonl, problems/, "
+             "investigations/, train.csv). Defaults: cluster path then local sibling.",
+    )
     p.add_argument("--limit", type=int, default=0)
     p.add_argument("--timeout", type=int, default=120)
     p.add_argument("--target", choices=["rule_unknown", "all_non_rule_found", "all"],
@@ -475,11 +480,22 @@ def main() -> None:
                    help="Don't pass gold as a hint (test blind search).")
     args = p.parse_args()
 
-    base = os.path.abspath(os.path.join(args.repo_root, ".."))
+    if args.repo_root:
+        base = args.repo_root
+    else:
+        cand = [
+            "/mnt/evafs/groups/re-com/mgromadzki/nemotron-master",
+            os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, "nemotron-master"),
+        ]
+        base = next((c for c in cand if os.path.isdir(c)), None)
+        if base is None:
+            sys.exit("--repo-root not provided and no default data directory found")
+    base = os.path.abspath(base)
     problems_jsonl = os.path.join(base, "problems.jsonl")
     problems_dir = os.path.join(base, "problems")
     inv_root = os.path.join(base, "investigations")
     train_csv = os.path.join(base, "train.csv")
+    print(f"data root: {base}")
 
     gold: dict[str, str] = {}
     with open(train_csv, newline="", encoding="utf-8") as f:

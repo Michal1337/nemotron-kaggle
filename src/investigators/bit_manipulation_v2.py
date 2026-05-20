@@ -373,11 +373,28 @@ def main():
     ap.add_argument("--workers", type=int, default=max(1, mp.cpu_count() - 2))
     ap.add_argument("--timeout", type=int, default=60, help="per-problem timeout (s)")
     ap.add_argument("--limit", type=int, default=0, help="stop after N (debug)")
+    ap.add_argument(
+        "--repo-root",
+        default=None,
+        help="Path to the data root (contains problems.jsonl, problems/, "
+             "investigations/). Defaults: cluster path then local sibling.",
+    )
     args = ap.parse_args()
 
-    base = os.path.join(os.path.dirname(__file__), os.pardir)
+    if args.repo_root:
+        base = args.repo_root
+    else:
+        cand = [
+            "/mnt/evafs/groups/re-com/mgromadzki/nemotron-master",
+            os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, "nemotron-master"),
+        ]
+        base = next((c for c in cand if os.path.isdir(c)), None)
+        if base is None:
+            sys.exit("--repo-root not provided and no default data directory found")
+    base = os.path.abspath(base)
     problems_jsonl = os.path.join(base, "problems.jsonl")
     problems_dir = os.path.join(base, "problems")
+    print(f"data root: {base}")
 
     ids = _load_target_ids(problems_jsonl, args.target)
     if args.limit:
