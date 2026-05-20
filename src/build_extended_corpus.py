@@ -97,6 +97,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--stratify-seed", type=int, default=0,
                    help="Seed for the stratified shuffle (only used when "
                         "--stratify-batch-size > 0).")
+    p.add_argument("--retokenize-categories", default="",
+                   help="Comma-separated categories to force-retokenize from "
+                        "--reasoning-dir even when the pid is already in the "
+                        "base corpus. Use this when reasoning files for a "
+                        "category have been rewritten (e.g. bit_manipulation "
+                        "switched to the declarative narrator format).")
     return p.parse_args()
 
 
@@ -237,8 +243,19 @@ def main() -> None:
     prompts_answers = load_train_csv(args.train_csv)
     base_recs, base_pids = load_base_index(args.base_index)
     add_cats = set(args.add_categories.split(","))
+    retok_cats = {c for c in args.retokenize_categories.split(",") if c}
 
-    candidates = sorted(
+    # Pids in base_pids that belong to a retokenize category — these get freshly
+    # tokenized from --reasoning-dir, NOT mirrored from --base-tokens.
+    base_retok_pids = {
+        pid for pid in base_pids
+        if problems.get(pid, {}).get("category") in retok_cats
+        and (Path(args.reasoning_dir) / f"{pid}.txt").is_file()
+        and pid in prompts_answers
+    }
+
+    # New (non-base) candidates: rule_found, in add_cats, has reasoning.
+    new_candidates = sorted(
         pid for pid, p in problems.items()
         if p.get("status") == "rule_found"
         and p.get("category") in add_cats
@@ -247,11 +264,18 @@ def main() -> None:
         and (Path(args.reasoning_dir) / f"{pid}.txt").is_file()
     )
 
+    # Full list of pids the tokenizer should write fresh synthetic.json for.
+    candidates = sorted(set(new_candidates) | base_retok_pids)
+
     print(f"Base corpus (from {Path(args.base_index).parent.name}): {len(base_pids):,} pids")
     print(f"Adding categories: {sorted(add_cats)}")
-    print(f"Candidates to add (rule_found, not in base, has reasoning): {len(candidates):,}")
+    if retok_cats:
+        print(f"Force-retokenize categories: {sorted(retok_cats)}  "
+              f"(pids in base to retokenize: {len(base_retok_pids):,})")
+    print(f"New candidates: {len(new_candidates):,}")
+    print(f"Total to tokenize (new + retokenized): {len(candidates):,}")
     print(f"  by category:")
-    cat_counts = Counter(problems[p]["category"] for p in candidates)
+    cat_counts = Counter(problems[p]["category"] for p in candidates if p in problems)
     for c, n in cat_counts.most_common():
         print(f"    {c}: {n}")
 
@@ -266,13 +290,17 @@ def main() -> None:
     tokens_dir.mkdir(exist_ok=True)
     logprobs_dir.mkdir(exist_ok=True)
 
-    # 1. Mirror existing tokens (symlink unless --copy)
-    print(f"\nMirroring {len(base_pids):,} existing token dirs...")
+    # 1. Mirror existing tokens (symlink unless --copy). Skip pids that we
+    # will retokenize fresh from --reasoning-dir.
+    print(f"\nMirroring {len(base_pids) - len(base_retok_pids):,} existing token dirs "
+          f"(skipping {len(base_retok_pids):,} that will be retokenized)...")
     base_tokens = Path(args.base_tokens).resolve()
     if not base_tokens.is_dir():
         sys.exit(f"--base-tokens not found: {base_tokens}")
     n_mirrored = 0
     for pid in base_pids:
+        if pid in base_retok_pids:
+            continue
         src = base_tokens / pid
         if not src.is_dir():
             continue
@@ -293,6 +321,7 @@ def main() -> None:
     chat_tok = AutoTokenizer.from_pretrained(args.tokenizer, trust_remote_code=True)
 
     new_recs: list[dict] = []
+    retok_updates: dict[str, int] = {}  # pid -> new num_loss_tokens
     skipped = 0
     for i, pid in enumerate(candidates):
         result = tokenize_problem(pid, prompts_answers, args.reasoning_dir,
@@ -304,19 +333,32 @@ def main() -> None:
         out_dir.mkdir(exist_ok=True)
         with open(out_dir / "synthetic.json", "w") as f:
             json.dump(result, f)
-        new_recs.append({
-            "epoch": 0,
-            "step": -1,  # placeholder; train_huikang_style.py doesn't read this
-            "problem_id": pid,
-            "segment": "synthetic.jsonl",
-            "category": problems[pid]["category"],
-            "num_loss_tokens": sum(result["mask"]),
-            "total_loss": 0.0,
-            "min_logprob": 0.0,
-        })
+        if pid in base_retok_pids:
+            # Already represented in base_recs — just update its num_loss_tokens.
+            retok_updates[pid] = sum(result["mask"])
+        else:
+            new_recs.append({
+                "epoch": 0,
+                "step": -1,  # placeholder; train_huikang_style.py doesn't read this
+                "problem_id": pid,
+                "segment": "synthetic.jsonl",
+                "category": problems[pid]["category"],
+                "num_loss_tokens": sum(result["mask"]),
+                "total_loss": 0.0,
+                "min_logprob": 0.0,
+            })
         if (i + 1) % 200 == 0:
             print(f"  ...{i + 1}/{len(candidates)}")
-    print(f"  wrote {len(new_recs)} new token files; skipped {skipped}")
+    print(f"  wrote {len(new_recs) + len(retok_updates)} token files "
+          f"({len(retok_updates)} retokenized, {len(new_recs)} new); skipped {skipped}")
+
+    # Apply num_loss_tokens updates to base_recs so the stratified-batch
+    # heuristic and reporting see the new values.
+    if retok_updates:
+        for r in base_recs:
+            new_n = retok_updates.get(r.get("problem_id"))
+            if new_n is not None:
+                r["num_loss_tokens"] = new_n
 
     # 3. Build the merged index.jsonl. Stratify so new categories aren't clumped
     # into a single tail batch (the legacy behaviour of just appending).

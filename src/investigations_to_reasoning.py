@@ -573,44 +573,100 @@ def _bm_apply_transform(name: str, v: int) -> int:
     return (r ^ 0xFF) & 0xFF if invert else r
 
 
+# A single transform looks like one of: I, NOT, ROT(k), SHL(k), SHR(k),
+# NOT ROT(k), NOT SHL(k), NOT SHR(k).
+_BM_TERM = (
+    r"(?:NOT\s+(?:ROT\(\d+\)|SHL\(\d+\)|SHR\(\d+\))"
+    r"|I"
+    r"|NOT"
+    r"|ROT\(\d+\)"
+    r"|SHL\(\d+\)"
+    r"|SHR\(\d+\))"
+)
+
+
 _BM_RULE_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    ("MAJ", re.compile(r"^MAJ\(\s*(.+?)\s*,\s*(.+?)\s*,\s*(.+?)\s*\)$")),
-    ("CHO", re.compile(r"^CHO\(\s*(.+?)\s*,\s*(.+?)\s*,\s*(.+?)\s*\)$")),
-    ("AOA", re.compile(r"^\(\s*(.+?)\s+AND\s+(.+?)\s*\)\s+OR\s+\(\s*(.+?)\s+AND\s+(.+?)\s*\)$")),
-    ("OAO", re.compile(r"^\(\s*(.+?)\s+OR\s+(.+?)\s*\)\s+AND\s+\(\s*(.+?)\s+OR\s+(.+?)\s*\)$")),
-    ("AXA", re.compile(r"^\(\s*(.+?)\s+AND\s+(.+?)\s*\)\s+XOR\s+\(\s*(.+?)\s+AND\s+(.+?)\s*\)$")),
+    # 3-input named shapes
+    ("MAJ", re.compile(rf"^MAJ\(\s*({_BM_TERM})\s*,\s*({_BM_TERM})\s*,\s*({_BM_TERM})\s*\)$")),
+    ("CHO", re.compile(rf"^CHO\(\s*({_BM_TERM})\s*,\s*({_BM_TERM})\s*,\s*({_BM_TERM})\s*\)$")),
+    # 4-input shapes: (t1 op1 t2) op2 (t3 op3 t4) — same outer/inner ops for AOA/OAO/AXA/OXO
+    ("AOA", re.compile(
+        rf"^\(\s*({_BM_TERM})\s+AND\s+({_BM_TERM})\s*\)\s+OR\s+\(\s*({_BM_TERM})\s+AND\s+({_BM_TERM})\s*\)$")),
+    ("OAO", re.compile(
+        rf"^\(\s*({_BM_TERM})\s+OR\s+({_BM_TERM})\s*\)\s+AND\s+\(\s*({_BM_TERM})\s+OR\s+({_BM_TERM})\s*\)$")),
+    ("AXA", re.compile(
+        rf"^\(\s*({_BM_TERM})\s+AND\s+({_BM_TERM})\s*\)\s+XOR\s+\(\s*({_BM_TERM})\s+AND\s+({_BM_TERM})\s*\)$")),
+    ("OXO", re.compile(
+        rf"^\(\s*({_BM_TERM})\s+OR\s+({_BM_TERM})\s*\)\s+XOR\s+\(\s*({_BM_TERM})\s+OR\s+({_BM_TERM})\s*\)$")),
+    # 3-input mixed-op shapes (v1): (t1 op_a t2) op_b t3, with op_a ≠ op_b.
+    # The narrator labels them by op pair so the rationale can refer to the
+    # structure cleanly (e.g. "XOR_AND" = (t1 XOR t2) AND t3).
+    ("XOR_AND", re.compile(rf"^\(\s*({_BM_TERM})\s+XOR\s+({_BM_TERM})\s*\)\s+AND\s+({_BM_TERM})$")),
+    ("XOR_OR",  re.compile(rf"^\(\s*({_BM_TERM})\s+XOR\s+({_BM_TERM})\s*\)\s+OR\s+({_BM_TERM})$")),
+    ("AND_XOR", re.compile(rf"^\(\s*({_BM_TERM})\s+AND\s+({_BM_TERM})\s*\)\s+XOR\s+({_BM_TERM})$")),
+    ("AND_OR",  re.compile(rf"^\(\s*({_BM_TERM})\s+AND\s+({_BM_TERM})\s*\)\s+OR\s+({_BM_TERM})$")),
+    ("OR_XOR",  re.compile(rf"^\(\s*({_BM_TERM})\s+OR\s+({_BM_TERM})\s*\)\s+XOR\s+({_BM_TERM})$")),
+    ("OR_AND",  re.compile(rf"^\(\s*({_BM_TERM})\s+OR\s+({_BM_TERM})\s*\)\s+AND\s+({_BM_TERM})$")),
 ]
+
+# Map mixed3 labels to the inner/outer ops for the evaluator + narrator.
+_MIXED3_OPS = {
+    "XOR_AND": ("XOR", "AND"),
+    "XOR_OR":  ("XOR", "OR"),
+    "AND_XOR": ("AND", "XOR"),
+    "AND_OR":  ("AND", "OR"),
+    "OR_XOR":  ("OR",  "XOR"),
+    "OR_AND":  ("OR",  "AND"),
+}
 
 
 def _parse_bm_rule(rule_str: str) -> dict:
-    """Identify the v2 shape and extract the transform list.
+    """Identify the rule shape and extract the transform list.
 
-    Returns dict {shape, transforms} where transforms is either:
-      - list[str] of length 3 (MAJ, CHO)
-      - list[str] of length 4 (PAR4)
-      - list[list[str]] of two length-2 lists (AOA, OAO, AXA)
+    Returns dict {shape, transforms} where transforms is:
+      - list[str] length 1 (SINGLE)
+      - list[str] length 2 (PAIR_XOR/AND/OR)
+      - list[str] length 3 (TRIPLE_XOR/AND/OR, MAJ, CHO, MIXED3 variants)
+      - list[str] length 4 (PAR4)
+      - list[list[str]] two length-2 lists (AOA/OAO/AXA/OXO)
     """
     rule = rule_str.strip()
+
+    # Single transform
+    if re.fullmatch(_BM_TERM, rule):
+        return {"shape": "SINGLE", "transforms": [rule]}
+
+    # Named + mixed shapes via the pattern table
     for shape, pat in _BM_RULE_PATTERNS:
         m = pat.match(rule)
         if not m:
             continue
         if shape in ("MAJ", "CHO"):
             return {"shape": shape, "transforms": [m.group(1), m.group(2), m.group(3)]}
+        if shape in _MIXED3_OPS:
+            return {"shape": shape, "transforms": [m.group(1), m.group(2), m.group(3)]}
         return {
             "shape": shape,
             "transforms": [[m.group(1), m.group(2)], [m.group(3), m.group(4)]],
         }
-    # PAR4: a XOR b XOR c XOR d (flat, top-level XOR — parens only inside
-    # individual transforms like SHL(1) are fine, so we just check there's no
-    # other top-level operator).
-    if " XOR " in rule and " AND " not in rule and " OR " not in rule:
-        parts = [p.strip() for p in rule.split(" XOR ")]
-        if len(parts) == 4 and all(
-            re.fullmatch(r"(NOT\s+)?(I|NOT|ROT\(\d+\)|SHL\(\d+\)|SHR\(\d+\))", p)
-            for p in parts
-        ):
-            return {"shape": "PAR4", "transforms": parts}
+
+    # Flat (no outer parens) XOR / AND / OR chains
+    for op_name, op_word in (("XOR", " XOR "), ("AND", " AND "), ("OR", " OR ")):
+        # Reject mixed-op (would be caught by mixed3 above already)
+        other_ops = [o for o in (" XOR ", " AND ", " OR ") if o != op_word]
+        if any(o in rule for o in other_ops):
+            continue
+        if op_word in rule and "(" not in rule.replace("(", "", rule.count("(") - 0):
+            # naive: rule has no outer parens because every "(" is inside a transform
+            parts = [p.strip() for p in rule.split(op_word)]
+            if all(re.fullmatch(_BM_TERM, p) for p in parts):
+                if len(parts) == 2:
+                    return {"shape": f"PAIR_{op_name}", "transforms": parts}
+                if len(parts) == 3:
+                    return {"shape": f"TRIPLE_{op_name}", "transforms": parts}
+                if len(parts) == 4 and op_name == "XOR":
+                    return {"shape": "PAR4", "transforms": parts}
+
     raise ValueError(f"unrecognised bit_manipulation rule: {rule!r}")
 
 
@@ -672,10 +728,35 @@ def parse_bit_manipulation_v2_investigation(text: str) -> dict | None:
     }
 
 
+_BM_COMBINER = {
+    "XOR": lambda a, b: (a ^ b) & 0xFF,
+    "AND": lambda a, b: (a & b) & 0xFF,
+    "OR":  lambda a, b: (a | b) & 0xFF,
+}
+
+
 def _bm_eval_rule(rule: dict, v: int) -> int:
-    """Apply a parsed v2 rule to an 8-bit integer input."""
+    """Apply a parsed bit_manipulation rule to an 8-bit integer input."""
     shape = rule["shape"]
     ts = rule["transforms"]
+
+    if shape == "SINGLE":
+        return _bm_apply_transform(ts[0], v) & 0xFF
+    if shape.startswith("PAIR_"):
+        op = shape.split("_", 1)[1]
+        return _BM_COMBINER[op](_bm_apply_transform(ts[0], v), _bm_apply_transform(ts[1], v))
+    if shape.startswith("TRIPLE_"):
+        op = shape.split("_", 1)[1]
+        r = _bm_apply_transform(ts[0], v)
+        for t in ts[1:]:
+            r = _BM_COMBINER[op](r, _bm_apply_transform(t, v))
+        return r
+    if shape in _MIXED3_OPS:
+        op_inner, op_outer = _MIXED3_OPS[shape]
+        inner = _BM_COMBINER[op_inner](
+            _bm_apply_transform(ts[0], v), _bm_apply_transform(ts[1], v)
+        )
+        return _BM_COMBINER[op_outer](inner, _bm_apply_transform(ts[2], v))
     if shape == "MAJ":
         a = _bm_apply_transform(ts[0], v)
         b = _bm_apply_transform(ts[1], v)
@@ -710,6 +791,12 @@ def _bm_eval_rule(rule: dict, v: int) -> int:
             (_bm_apply_transform(a, v) & _bm_apply_transform(b, v))
             ^ (_bm_apply_transform(c, v) & _bm_apply_transform(d, v))
         ) & 0xFF
+    if shape == "OXO":
+        (a, b), (c, d) = ts
+        return (
+            (_bm_apply_transform(a, v) | _bm_apply_transform(b, v))
+            ^ (_bm_apply_transform(c, v) | _bm_apply_transform(d, v))
+        ) & 0xFF
     raise ValueError(f"unknown shape {shape}")
 
 
@@ -718,6 +805,19 @@ def _bm_b(v: int) -> str:
 
 
 _SHAPE_DESCRIPTION = {
+    "SINGLE": "a single transform applied to the input.",
+    "PAIR_XOR": "the bitwise XOR of two transforms.",
+    "PAIR_AND": "the bitwise AND of two transforms.",
+    "PAIR_OR":  "the bitwise OR of two transforms.",
+    "TRIPLE_XOR": "the bitwise XOR of three transforms (parity across the three transformed bits).",
+    "TRIPLE_AND": "the bitwise AND of three transforms.",
+    "TRIPLE_OR":  "the bitwise OR of three transforms.",
+    "XOR_AND": "the AND of (t1 XOR t2) with t3.",
+    "XOR_OR":  "the OR of (t1 XOR t2) with t3.",
+    "AND_XOR": "the XOR of (t1 AND t2) with t3.",
+    "AND_OR":  "the OR of (t1 AND t2) with t3.",
+    "OR_XOR":  "the XOR of (t1 OR t2) with t3.",
+    "OR_AND":  "the AND of (t1 OR t2) with t3.",
     "MAJ": (
         "the bitwise majority of three transforms — for each bit position, "
         "the output bit is 1 iff at least two of the three transformed bits are 1."
@@ -730,15 +830,10 @@ _SHAPE_DESCRIPTION = {
         "the bitwise XOR of four transforms — for each bit position, "
         "the output bit is the parity of the four transformed bits."
     ),
-    "AOA": (
-        "the OR of two ANDs: ((t1 & t2) | (t3 & t4))."
-    ),
-    "OAO": (
-        "the AND of two ORs: ((t1 | t2) & (t3 | t4))."
-    ),
-    "AXA": (
-        "the XOR of two ANDs: ((t1 & t2) ^ (t3 & t4))."
-    ),
+    "AOA": "the OR of two ANDs: ((t1 & t2) | (t3 & t4)).",
+    "OAO": "the AND of two ORs: ((t1 | t2) & (t3 | t4)).",
+    "AXA": "the XOR of two ANDs: ((t1 & t2) ^ (t3 & t4)).",
+    "OXO": "the XOR of two ORs: ((t1 | t2) ^ (t3 | t4)).",
 }
 
 
@@ -773,8 +868,25 @@ def narrate_bit_manipulation(pid: str, problem_data: dict, parsed: dict) -> str:
     L.append(f"The rule is 【{rule_str}】 — {_SHAPE_DESCRIPTION[rule['shape']]}")
     L.append("")
 
-    # Demonstrate on the first 2-3 examples so the rationale stays bounded
-    demo_n = min(2, len(examples))
+    # A clear textual label for the combining step (used in both example
+    # verification and the query application).
+    shape = rule["shape"]
+    if shape == "SINGLE":
+        combine_label = "applying the transform"
+    elif shape.startswith("PAIR_") or shape.startswith("TRIPLE_"):
+        combine_label = f"combining via bitwise {shape.split('_', 1)[1]}"
+    elif shape in _MIXED3_OPS:
+        op_inner, op_outer = _MIXED3_OPS[shape]
+        combine_label = f"combining: (t1 {op_inner} t2) {op_outer} t3"
+    elif shape in ("MAJ", "CHO", "PAR4", "AOA", "OAO", "AXA", "OXO"):
+        combine_label = f"combining via {shape}"
+    else:
+        combine_label = f"combining via {shape}"
+
+    # Demonstrate on the first 2-3 examples so the rationale stays bounded.
+    # For shapes where the verification step is trivial (single transform, or
+    # the rule is literally one of the example outputs), one example is enough.
+    demo_n = 1 if shape == "SINGLE" else min(2, len(examples))
     for ei in range(demo_n):
         inp_bin, out_bin = examples[ei]
         v = int(inp_bin, 2)
@@ -783,7 +895,7 @@ def narrate_bit_manipulation(pid: str, problem_data: dict, parsed: dict) -> str:
             tv = _bm_apply_transform(t, v)
             L.append(f"  【{t}】(【{inp_bin}】) = 【{_bm_b(tv)}】")
         combined = _bm_eval_rule(rule, v)
-        L.append(f"  combining via {rule['shape']}: 【{_bm_b(combined)}】 (expected 【{out_bin}】)")
+        L.append(f"  {combine_label}: 【{_bm_b(combined)}】 (expected 【{out_bin}】)")
         L.append("")
 
     # Apply to query
@@ -793,7 +905,7 @@ def narrate_bit_manipulation(pid: str, problem_data: dict, parsed: dict) -> str:
         tv = _bm_apply_transform(t, qv)
         L.append(f"  【{t}】(【{query}】) = 【{_bm_b(tv)}】")
     result = _bm_eval_rule(rule, qv)
-    L.append(f"  combining via {rule['shape']}: 【{_bm_b(result)}】")
+    L.append(f"  {combine_label}: 【{_bm_b(result)}】")
     L.append("")
 
     L.append("I will now return the answer in \\boxed{}")
@@ -803,13 +915,12 @@ def narrate_bit_manipulation(pid: str, problem_data: dict, parsed: dict) -> str:
 
 def _flatten_transforms(rule: dict) -> list[str]:
     ts = rule["transforms"]
-    if rule["shape"] in ("MAJ", "CHO", "PAR4"):
-        return list(ts)
-    # AOA / OAO / AXA: list of two pairs
-    flat: list[str] = []
-    for pair in ts:
-        flat.extend(pair)
-    return flat
+    if rule["shape"] in ("AOA", "OAO", "AXA", "OXO"):
+        flat: list[str] = []
+        for pair in ts:
+            flat.extend(pair)
+        return flat
+    return list(ts)
 
 
 def narrate_cryptarithm(pid: str, problem_data: dict, parsed: dict) -> str:
