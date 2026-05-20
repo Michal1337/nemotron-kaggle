@@ -861,16 +861,45 @@ _SHAPE_DESCRIPTION = {
 }
 
 
-def narrate_bit_manipulation(pid: str, problem_data: dict, parsed: dict) -> str:
-    """Produce a huikang-compatible CoT for a v2 bit_manipulation investigation.
+def narrate_bit_manipulation(pid: str, problem_data: dict, parsed: dict) -> str | None:
+    """Produce a CoT for a bit_manipulation problem.
 
-    huikang's reasoner output for bit_manipulation is column-wise per output bit
-    (~9KB). The v2 shapes (MAJ, CHO, PAR4, AOA, OAO, AXA) don't lend themselves
-    to the column-by-column primitive matching, so we emit a declarative
-    narration: state the rule, demonstrate it on each example by applying every
-    transform and the combiner, then apply to the query. Opening/closing match
-    huikang's universal scaffolding.
+    Dispatch:
+      1. **Try huikang's reasoner first** on the raw problem. It handles all of
+         v1's shapes (SINGLE, PAIR_*, TRIPLE_*, mixed3) natively in its
+         column-walking format (~9KB), matching the corpus distribution.
+         If it produces a gold-matching rationale, return that.
+      2. **Fall back to our declarative narrator** using v2's parsed rule.
+         Only triggers for v2-specific shapes (MAJ, CHO, PAR4, AOA, OAO, AXA,
+         OXO) — shapes huikang's reasoner can't represent.
+      3. Return None if both fail or if huikang's rationale would emit a
+         wrong-answer \\boxed{}.
     """
+    # Step 1: huikang's reasoner
+    if problem_data:
+        try:
+            from reasoners.bit_manipulation import reasoning_bit_manipulation
+            problem = Problem(
+                id=pid,
+                category="bit_manipulation",
+                examples=[
+                    Example(e["input_value"], e["output_value"])
+                    for e in problem_data.get("examples", [])
+                ],
+                question=problem_data.get("question", parsed.get("query", "")),
+                answer=problem_data.get("answer", parsed.get("predicted", "")),
+            )
+            huikang_out = reasoning_bit_manipulation(problem)
+        except Exception:
+            huikang_out = None
+        if huikang_out is not None:
+            extracted = extract_final_answer(huikang_out)
+            expected = parsed.get("predicted") or problem_data.get("answer", "")
+            if _verify(expected, extracted):
+                return huikang_out
+            # huikang's answer disagrees with gold — fall through to declarative
+
+    # Step 2: declarative narrator for v2-specific shapes
     rule = parsed["rule"]
     examples = parsed["examples"]
     query = parsed["query"]
