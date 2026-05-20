@@ -40,9 +40,10 @@ import argparse
 import csv
 import json
 import os
+import random
 import re
 import sys
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 
 
@@ -90,7 +91,45 @@ def parse_args() -> argparse.Namespace:
                    help="Copy existing tokens instead of symlinking. Slower, uses disk.")
     p.add_argument("--dry-run", action="store_true",
                    help="Print what would be added without writing anything.")
+    p.add_argument("--stratify-batch-size", type=int, default=32,
+                   help="Reshuffle the merged index so each batch of this size "
+                        "contains a mix of categories. 0 disables (legacy append).")
+    p.add_argument("--stratify-seed", type=int, default=0,
+                   help="Seed for the stratified shuffle (only used when "
+                        "--stratify-batch-size > 0).")
     return p.parse_args()
+
+
+def stratify_records(recs: list[dict], batch_size: int, seed: int) -> list[dict]:
+    """Return recs reordered so each consecutive ``batch_size`` slice mixes categories.
+
+    Builds n_batches buckets, then round-robin assigns each category's records
+    (shuffled internally) across the buckets in a shuffled bucket order. This
+    keeps any single category from being clumped into a single batch — which
+    is what happens if we just concatenate base_recs + new_recs.
+    """
+    n = len(recs)
+    if batch_size <= 0 or n <= batch_size:
+        return list(recs)
+    n_batches = (n + batch_size - 1) // batch_size
+    rng = random.Random(seed)
+    by_cat: dict[str, list[int]] = defaultdict(list)
+    for i, r in enumerate(recs):
+        by_cat[r.get("category", "unknown")].append(i)
+    for idxs in by_cat.values():
+        rng.shuffle(idxs)
+    batch_order = list(range(n_batches))
+    rng.shuffle(batch_order)
+    batches: list[list[int]] = [[] for _ in range(n_batches)]
+    assigned = 0
+    for cat in sorted(by_cat.keys()):
+        for idx in by_cat[cat]:
+            batches[batch_order[assigned % n_batches]].append(idx)
+            assigned += 1
+    new_order: list[int] = []
+    for b in batches:
+        new_order.extend(b)
+    return [recs[i] for i in new_order]
 
 
 def load_problems(path: str) -> dict[str, dict]:
@@ -139,22 +178,19 @@ def tokenize_problem(pid: str, prompts_answers: dict, reasoning_dir: str,
         f"{reasoning_text}\n</think>\n\\boxed{{{reasoning_answer}}}<|im_end|>"
     )
 
+    # Render the chat template as a plain string then tokenize ourselves.
+    # apply_chat_template(tokenize=True) is brittle across transformers
+    # versions — return_dict=False can be ignored, giving a BatchEncoding
+    # whose iteration yields dict keys ('input_ids', 'attention_mask')
+    # instead of token ids. Two-step avoids that class of bug entirely.
     messages = [{"role": "user", "content": prompt_text + PROMPT_SUFFIX}]
-    prompt_ids = chat_tok.apply_chat_template(
+    rendered_prompt = chat_tok.apply_chat_template(
         messages,
-        tokenize=True,
+        tokenize=False,
         add_generation_prompt=True,
         enable_thinking=True,
-        # Some transformers versions default to return_dict=True here, which
-        # gives a BatchEncoding whose iteration yields the dict keys
-        # ('input_ids', 'attention_mask') rather than the token ids.
-        return_dict=False,
-        return_tensors=None,
     )
-    # Defensive: if a BatchEncoding still slipped through (older transformers
-    # ignore return_dict=False), pull out input_ids explicitly.
-    if hasattr(prompt_ids, "get") and "input_ids" in prompt_ids:
-        prompt_ids = prompt_ids["input_ids"]
+    prompt_ids = chat_tok.encode(rendered_prompt, add_special_tokens=False)
     completion_ids = chat_tok.encode(completion_text, add_special_tokens=False)
 
     # Some chat-template configurations silently fall back to returning the
@@ -282,14 +318,29 @@ def main() -> None:
             print(f"  ...{i + 1}/{len(candidates)}")
     print(f"  wrote {len(new_recs)} new token files; skipped {skipped}")
 
-    # 3. Write merged index.jsonl preserving original order, appending new entries
+    # 3. Build the merged index.jsonl. Stratify so new categories aren't clumped
+    # into a single tail batch (the legacy behaviour of just appending).
+    merged = list(base_recs) + list(new_recs)
+    if args.stratify_batch_size > 0:
+        ordered = stratify_records(merged, args.stratify_batch_size, args.stratify_seed)
+        print(f"\nStratified {len(ordered):,} records across "
+              f"{(len(ordered) + args.stratify_batch_size - 1) // args.stratify_batch_size} "
+              f"batches of {args.stratify_batch_size}")
+        # Show the first few batches so the user can sanity-check the mix
+        for bi in range(min(3, (len(ordered) + args.stratify_batch_size - 1) // args.stratify_batch_size)):
+            slc = ordered[bi * args.stratify_batch_size : (bi + 1) * args.stratify_batch_size]
+            cats = Counter(r["category"] for r in slc)
+            print(f"  batch {bi}: {dict(cats)}")
+    else:
+        ordered = merged
+        print("\nStratification disabled (--stratify-batch-size 0): "
+              "new examples appended at tail.")
+
     index_path = logprobs_dir / "index.jsonl"
     with open(index_path, "w") as f:
-        for r in base_recs:
+        for r in ordered:
             f.write(json.dumps(r) + "\n")
-        for r in new_recs:
-            f.write(json.dumps(r) + "\n")
-    total = len(base_recs) + len(new_recs)
+    total = len(ordered)
     print(f"\nWrote {index_path}")
     print(f"  total examples: {total:,} (base {len(base_recs):,} + new {len(new_recs):,})")
     print(f"  at batch=32, that's {total // 32} steps in 1 epoch")
