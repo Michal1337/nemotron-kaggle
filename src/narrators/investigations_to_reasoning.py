@@ -37,20 +37,13 @@ from collections import Counter
 from pathlib import Path
 
 
-# Path to the huikang nemotron-master repo (contains reasoners/equation_numeric.py
-# etc.). Set lazily by ``_ensure_reasoners_path`` so it picks up --repo-root at
-# runtime.
-_REASONERS_REPO: Path | None = None
+# This script lives under src/narrators/. Add src/ to sys.path so the
+# sibling `reasoners` package (also under src/) is importable.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-
-def _ensure_reasoners_path(repo_root: Path) -> None:
-    """Insert ``repo_root`` on sys.path so we can import the huikang reasoners."""
-    global _REASONERS_REPO
-    repo_root = Path(repo_root).resolve()
-    if _REASONERS_REPO is not None and _REASONERS_REPO == repo_root:
-        return
-    sys.path.insert(0, str(repo_root))
-    _REASONERS_REPO = repo_root
+from reasoners.cryptarithm import reasoning_cryptarithm  # noqa: E402
+from reasoners.equation_numeric import reasoning_equation_numeric  # noqa: E402
+from reasoners.store_types import Example, Problem  # noqa: E402
 
 
 def _huikang_eq_num_reasoning(pid: str, category: str,
@@ -60,15 +53,8 @@ def _huikang_eq_num_reasoning(pid: str, category: str,
 
     Returns the verbatim huikang reasoning text (~3-12 KB) or None if huikang's
     reasoner couldn't find an operation in its 30-op pool (caller should fall
-    back).
+    back / skip).
     """
-    if _REASONERS_REPO is None:
-        raise RuntimeError(
-            "_ensure_reasoners_path() not called — repo_root must be set "
-            "before any narrator that invokes huikang's reasoner."
-        )
-    from reasoners.equation_numeric import reasoning_equation_numeric
-    from reasoners.store_types import Example, Problem
     problem = Problem(
         id=pid,
         category=category,  # type: ignore[arg-type]
@@ -89,10 +75,6 @@ def _huikang_eq_num_reasoning(pid: str, category: str,
 def _huikang_cryptarithm_reasoning(pid: str, examples_in: list[tuple[str, str]],
                                     query: str, predicted: str) -> str | None:
     """Dispatch a concat-only cryptarithm to huikang's cryptarithm reasoner."""
-    if _REASONERS_REPO is None:
-        raise RuntimeError("_ensure_reasoners_path() must be called first")
-    from reasoners.cryptarithm import reasoning_cryptarithm
-    from reasoners.store_types import Example, Problem
     problem = Problem(
         id=pid,
         category="cryptarithm_deduce",
@@ -564,7 +546,7 @@ def narrate_equation_numeric(pid: str, problem_data: dict, parsed: dict) -> str:
     (terse declarative blocks, no per-operator search trace), which produced
     a corpus the model couldn't reliably learn from. We now hand the parsed
     problem straight to ``reasoning_equation_numeric`` from
-    ``nemotron-master/reasoners/equation_numeric.py`` and emit its verbatim
+    ``src/reasoners/equation_numeric.py`` (ported from huikang) and emit its verbatim
     output (~3-12 KB per problem with full "Trying common/rare operations"
     enumerations, multiplication breakdowns, etc.).
 
@@ -1422,9 +1404,6 @@ def main() -> None:
             sys.exit("--repo-root not provided and no default found")
 
     print(f"Repo root: {repo}")
-    # Make huikang's reasoners importable so narrators can call them directly.
-    _ensure_reasoners_path(repo)
-
     inv_root = repo / "investigations"
     problems_dir = repo / "problems"
     out_dir = Path(args.output_dir) if args.output_dir else (repo / "reasoning")
