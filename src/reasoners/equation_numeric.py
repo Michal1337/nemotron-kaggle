@@ -298,7 +298,27 @@ def _resolve_transform_order(preferred_mode: str | None) -> tuple[tuple[bool, bo
 def reasoning_equation_numeric(
     problem: Problem,
     preferred_mode: str | None = None,
+    query_op_override: tuple[str, bool, bool] | None = None,
 ) -> str | None:
+    """Generate an equation_numeric chain-of-thought rationale.
+
+    Parameters
+    ----------
+    preferred_mode :
+        Bias the (rev_ops, rev_res) search order to put a preferred
+        interpretation first ("standard" / "little_endian" / ...).
+        Useful when an external solver has already identified the
+        correct transform and we want huikang to commit to it on
+        ambiguous example sets.
+    query_op_override :
+        For ``equation_numeric_guess`` problems where the query operator
+        does NOT appear in the examples, huikang's default fallback is
+        absolute difference. If the caller knows the actual op (e.g. from
+        Alice's gold-conditioned search), pass ``(op_name, rev_ops,
+        rev_res)`` here and the "Applying to" section will use that instead.
+        The ``op_name`` must be one of the candidate names emitted by
+        ``_common_candidates`` / ``_rare_candidates``.
+    """
     lines: list[str] = []
     lines.append("We need to infer the transformation rule from the examples.")
     lines.append("I will put my final answer inside \\boxed{}.")
@@ -606,18 +626,33 @@ def reasoning_equation_numeric(
     lines.append("")
     lines.append(f"Applying to {problem.question}:")
     if effective_q_op != q_op:
-        lines.append(
-            "  We recall that the question operator is not found in the examples. "
-            "We will use the absolute difference as the operator."
-        )
-        abs_diff_op = FoundOp(
-            op_name="absolute difference",
-            rev_ops=False,
-            rev_res=False,
-            fmt=found_ops[effective_q_op].fmt,
-            op_char=q_op or "",
-        )
-        result_val, steps = _apply_op(abs_diff_op, qa, qb)
+        if query_op_override is not None:
+            ov_op_name, ov_rev_ops, ov_rev_res = query_op_override
+            lines.append(
+                "  We recall that the question operator is not found in the examples. "
+                f"We will use {ov_op_name} as the operator for the question."
+            )
+            override_op = FoundOp(
+                op_name=ov_op_name,
+                rev_ops=ov_rev_ops,
+                rev_res=ov_rev_res,
+                fmt=found_ops[effective_q_op].fmt,
+                op_char=q_op or "",
+            )
+            result_val, steps = _apply_op(override_op, qa, qb)
+        else:
+            lines.append(
+                "  We recall that the question operator is not found in the examples. "
+                "We will use the absolute difference as the operator."
+            )
+            abs_diff_op = FoundOp(
+                op_name="absolute difference",
+                rev_ops=False,
+                rev_res=False,
+                fmt=found_ops[effective_q_op].fmt,
+                op_char=q_op or "",
+            )
+            result_val, steps = _apply_op(abs_diff_op, qa, qb)
     else:
         result_val, steps = _apply_op(found_ops[effective_q_op], qa, qb)
     for step in steps:

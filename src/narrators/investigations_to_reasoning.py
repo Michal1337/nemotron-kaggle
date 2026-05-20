@@ -48,8 +48,16 @@ from reasoners.store_types import Example, Problem  # noqa: E402
 
 def _huikang_eq_num_reasoning(pid: str, category: str,
                               examples_in: list[tuple[str, str]],
-                              query: str, predicted: str) -> str | None:
+                              query: str, predicted: str,
+                              preferred_mode: str | None = None,
+                              query_op_override: tuple[str, bool, bool] | None = None) -> str | None:
     """Build a Problem object and dispatch to huikang's equation_numeric reasoner.
+
+    Pass ``preferred_mode`` ("standard" or "little_endian") to bias huikang's
+    (rev_ops, rev_res) search order so its first-match aligns with a known
+    correct interpretation (e.g. Alice's solver_mode for arithmetic
+    cryptarithm). Without this, huikang defaults to trying (True, True) first
+    and can lock onto the wrong interpretation for ambiguous example sets.
 
     Returns the verbatim huikang reasoning text (~3-12 KB) or None if huikang's
     reasoner couldn't find an operation in its 30-op pool (caller should fall
@@ -67,7 +75,11 @@ def _huikang_eq_num_reasoning(pid: str, category: str,
     # ``_all_candidates``). Treat any exception as "couldn't reason"; caller
     # falls back / skips.
     try:
-        return reasoning_equation_numeric(problem)
+        return reasoning_equation_numeric(
+            problem,
+            preferred_mode=preferred_mode,
+            query_op_override=query_op_override,
+        )
     except (StopIteration, ValueError, ZeroDivisionError):
         return None
 
@@ -984,6 +996,53 @@ def _flatten_transforms(rule: dict) -> list[str]:
     return list(ts)
 
 
+_EQ_NUM_RE = re.compile(r"^(\d+)(\D)(\d+)$")
+
+
+def _alice_query_op_override(parsed: dict, decoded_query: str,
+                              decoded_examples: list[tuple[str, str]] | None = None) -> tuple[str, bool, bool] | None:
+    """Translate Alice's solver_ops + solver_mode into huikang's override signature.
+
+    Only relevant when the query operator does NOT appear in the EXAMPLES — that's
+    when huikang's reasoner falls back to absolute difference, which usually
+    doesn't match Alice's verified answer. ``parsed["ops"]`` includes both the
+    example ops AND the query op (Alice tags every op she identified), so we
+    have to compute the example-op set from the actual decoded examples.
+
+    Returns ``(huikang_op_name, rev_ops, rev_res)`` or None if no override is
+    appropriate (query op is in examples, or Alice didn't surface the op).
+    """
+    ops = parsed.get("ops") or {}
+    if not decoded_query:
+        return None
+    m = _EQ_NUM_RE.fullmatch(decoded_query)
+    if not m:
+        return None
+    q_op_char = m.group(2)
+    # Compute the set of op chars that actually appear in the examples.
+    if decoded_examples is None:
+        return None
+    example_op_chars: set[str] = set()
+    for di, _do in decoded_examples:
+        em = _EQ_NUM_RE.fullmatch(di)
+        if em:
+            example_op_chars.add(em.group(2))
+    if q_op_char in example_op_chars:
+        # Query op is in examples — huikang handles natively, no override needed.
+        return None
+    # Query op is NOT in examples. Look up Alice's op for it.
+    alice_op_name = ops.get(q_op_char)
+    if not alice_op_name:
+        return None
+    huikang_op = OP_NAME_TO_HUIKANG.get(alice_op_name, alice_op_name)
+    mode = parsed.get("mode")
+    if mode in ("little_endian", "alice"):
+        rev_ops, rev_res = True, True
+    else:
+        rev_ops, rev_res = False, False
+    return (huikang_op, rev_ops, rev_res)
+
+
 def _decode_cipher_pair(cipher_input: str, mapping: dict[str, int]) -> str | None:
     """Decode a 5-char cipher input like '@%-*$' to its digit form '64-77'.
 
@@ -1083,15 +1142,19 @@ def narrate_cryptarithm(pid: str, problem_data: dict, parsed: dict) -> str | Non
         return None
 
     # Build the numeric Problem and let huikang's reasoner produce the search trace.
+    # Pass Alice's solver_mode + chosen query-op so huikang locks onto her
+    # interpretation: needed for ambiguous example sets and for guess-mode
+    # problems where the query op doesn't appear in examples.
+    query_op_override = _alice_query_op_override(parsed, decoded_query, decoded_examples)
     body_full = _huikang_eq_num_reasoning(
         pid, "equation_numeric_deduce",
         decoded_examples, decoded_query, decoded_predicted,
+        preferred_mode=parsed.get("mode"),
+        query_op_override=query_op_override,
     )
     if body_full is None:
         return None
-    # Verify huikang's solution matches Alice's decoded answer; skip if not
-    # (huikang may have picked a different op that happens to fit the examples
-    # but produces a different query answer).
+    # Verify huikang's solution matches Alice's decoded answer; skip if not.
     extracted_numeric = extract_final_answer(body_full)
     if not _verify(decoded_predicted, extracted_numeric):
         return None
