@@ -144,6 +144,18 @@ OP_NAME_TO_HUIKANG: dict[str, str] = {
     "rdiv": "reverse division (b/a)",
     "rev_modulo": "reverse modulo (b mod a)",
     "rmod": "reverse modulo (b mod a)",
+    # Alice-pool ops added to huikang's reasoner via the equation_numeric.py
+    # extension. The narrator only uses these names when threading
+    # query_op_override; huikang's reasoner internally enumerates these in
+    # _rare_candidates so they're searchable.
+    "gcd": "gcd",
+    "lcm": "lcm",
+    "absdiff_m2": "absolute difference - 2",
+    "absdiff_p2": "absolute difference + 2",
+    # Signed sub variants — Alice uses these names; huikang's "subtraction (a-b)"
+    # handles them when paired with sign-prefix format detection.
+    "sub_signed": "subtraction (a-b)",
+    "rsub_signed": "reverse subtraction (b-a)",
 }
 
 
@@ -873,20 +885,30 @@ _SHAPE_DESCRIPTION = {
 }
 
 
+_BIT_MANIP_ALLOW_DECLARATIVE_FALLBACK = False
+
+
+def set_bit_manip_fallback(allow: bool) -> None:
+    """Toggle the declarative-fallback used by ``narrate_bit_manipulation``.
+
+    Strict (default) — huikang's column-walking only; skip if he can't solve.
+    Loose — fall back to the declarative narrator using v2's parsed rule
+    when huikang fails. Generates *mixed-format* corpora — only use for
+    dataset E (the size-matched comparison baseline). Prior eval showed mixed
+    format degraded bit_manip in-sample from 0.86 → 0.08, so don't ship the
+    loose-mode dataset as the primary candidate.
+    """
+    global _BIT_MANIP_ALLOW_DECLARATIVE_FALLBACK
+    _BIT_MANIP_ALLOW_DECLARATIVE_FALLBACK = allow
+
+
 def narrate_bit_manipulation(pid: str, problem_data: dict, parsed: dict) -> str | None:
-    """Produce a CoT for a bit_manipulation problem — huikang's format only.
+    """Produce a CoT for a bit_manipulation problem.
 
-    Calls huikang's ``reasoning_bit_manipulation`` and returns its output
-    verbatim if it produces a gold-matching rationale (~9KB column-walking
-    format that matches huikang's existing corpus). Returns None otherwise so
-    the caller skips the problem.
-
-    Rationale for the strict policy: training on mixed formats (huikang's
-    column-walking + our declarative) caused bit_manip in-sample accuracy to
-    drop from 0.86 → 0.08 in our prior eval. Keeping every bit_manip rationale
-    in the same format is non-negotiable. Problems huikang's reasoner can't
-    represent get excluded from the corpus rather than narrated in a different
-    style.
+    Default behaviour: huikang's column-walking format only; problems huikang's
+    reasoner can't represent are skipped. Call ``set_bit_manip_fallback(True)``
+    before invoking to enable a declarative-format fallback (mixed format —
+    only for dataset E).
     """
     if not problem_data:
         return None
@@ -904,14 +926,23 @@ def narrate_bit_manipulation(pid: str, problem_data: dict, parsed: dict) -> str 
         )
         huikang_out = reasoning_bit_manipulation(problem)
     except Exception:
+        huikang_out = None
+    if huikang_out is not None:
+        extracted = extract_final_answer(huikang_out)
+        expected = parsed.get("predicted") or problem_data.get("answer", "")
+        if _verify(expected, extracted):
+            return huikang_out
+
+    # Strict mode (default): no fallback, skip.
+    if not _BIT_MANIP_ALLOW_DECLARATIVE_FALLBACK:
         return None
-    if huikang_out is None:
+    # Loose mode (dataset E only): emit a declarative rationale using v2's
+    # parsed rule. Requires parsed to be a v2-investigation parse — if we have
+    # only an empty parsed (problems.jsonl walking path), we can't generate a
+    # declarative either; return None.
+    if not parsed or "rule" not in parsed:
         return None
-    extracted = extract_final_answer(huikang_out)
-    expected = parsed.get("predicted") or problem_data.get("answer", "")
-    if not _verify(expected, extracted):
-        return None
-    return huikang_out
+    return _legacy_declarative_narrate_bit_manipulation(pid, problem_data, parsed)
 
 
 def _legacy_declarative_narrate_bit_manipulation(pid: str, problem_data: dict, parsed: dict) -> str:
@@ -1489,7 +1520,16 @@ def main() -> None:
     p.add_argument("--overwrite", action="store_true",
                    help="Overwrite reasoning/<pid>.txt if it already exists.")
     p.add_argument("--verbose", action="store_true")
+    p.add_argument("--bit-manip-fallback", action="store_true",
+                   help="For bit_manipulation, fall back to the declarative "
+                        "narrator when huikang's reasoner can't produce a "
+                        "matching rationale. Recovers v2-only shape problems "
+                        "(MAJ/CHO/PAR4/etc) at the cost of mixed format in "
+                        "the bit_manip subset. Use only for the size-matched "
+                        "comparison dataset (E); leave off for strict-format "
+                        "training (datasets A-D).")
     args = p.parse_args()
+    set_bit_manip_fallback(args.bit_manip_fallback)
 
     if args.repo_root:
         repo = Path(args.repo_root)
@@ -1625,8 +1665,13 @@ def main() -> None:
         # its own search and may solve problems v2 missed (and vice versa);
         # walking problems.jsonl maximises coverage.
         if cat == "bit_manipulation":
+            # Walk every bit_manipulation problem. In loose mode we also load
+            # the v2 investigation file (if any) so the declarative fallback
+            # has the parsed rule.
             cat_pids = sorted(pid for pid, c in all_problems.items() if c == cat)
-            print(f"\n=== {cat}: walking {len(cat_pids)} problems (huikang-strict) ===")
+            cat_dir = inv_root / cat / "correct"
+            print(f"\n=== {cat}: walking {len(cat_pids)} problems"
+                  f" ({'loose-fallback' if args.bit_manip_fallback else 'strict-huikang'}) ===")
             for pid in cat_pids:
                 stats["seen"] += 1
                 prob_file = problems_dir / f"{pid}.jsonl"
@@ -1635,8 +1680,20 @@ def main() -> None:
                     continue
                 with prob_file.open() as pf:
                     problem_data = json.loads(pf.readline())
+                # Load parsed v2 rule if available (needed for declarative fallback)
+                parsed: dict = {}
+                if args.bit_manip_fallback:
+                    inv_file = cat_dir / f"{pid}.txt"
+                    if inv_file.is_file():
+                        try:
+                            inv_text = inv_file.read_text(encoding="utf-8")
+                            p2 = parse_bit_manipulation_v2_investigation(inv_text)
+                            if p2 is not None:
+                                parsed = p2
+                        except Exception:
+                            pass
                 try:
-                    trace = narrate_bit_manipulation(pid, problem_data, parsed={})
+                    trace = narrate_bit_manipulation(pid, problem_data, parsed=parsed)
                 except Exception as exc:
                     stats["narration_failed"] += 1
                     if args.verbose:

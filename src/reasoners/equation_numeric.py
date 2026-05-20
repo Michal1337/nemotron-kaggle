@@ -34,6 +34,19 @@ def _rare_candidates(a: int, b: int, sa: str, sb: str) -> list[tuple[str, str]]:
     out.append(("add-1", str(a + b - 1)))
     out.append(("sub+1", str(a - b + 1)))
     out.append(("sub-1", str(a - b - 1)))
+    # Extension ops (originally from Alice's solver pool) — added to the END so
+    # huikang's existing op-selection order is preserved on previously-known
+    # problems.
+    import math as _math
+    if a != 0 or b != 0:
+        out.append(("gcd", str(_math.gcd(abs(a), abs(b)))))
+        try:
+            lcm_val = _math.lcm(abs(a), abs(b))
+            out.append(("lcm", str(lcm_val)))
+        except Exception:
+            pass
+    out.append(("absolute difference - 2", str(abs(a - b) - 2)))
+    out.append(("absolute difference + 2", str(abs(a - b) + 2)))
     if a != 0 and b != 0:
         big, small = max(a, b), min(a, b)
         out.append(("max mod min", str(big % small)))
@@ -123,6 +136,14 @@ def _expr(name: str, a: str, b: str) -> str:
     if name == "max mod min":
         big, small = (a, b) if int(a) >= int(b) else (b, a)
         return f"max({a},{b}) mod min({a},{b}) = {big} mod {small}"
+    if name == "gcd":
+        return f"gcd({a}, {b})"
+    if name == "lcm":
+        return f"lcm({a}, {b})"
+    if name == "absolute difference - 2":
+        return f"|{a} - {b}| - 2"
+    if name == "absolute difference + 2":
+        return f"|{a} - {b}| + 2"
     if len(a) == 2 and len(b) == 2:
         d1, d2, d3, d4 = a[0], a[1], b[0], b[1]
         if name == "digit absolute diff":
