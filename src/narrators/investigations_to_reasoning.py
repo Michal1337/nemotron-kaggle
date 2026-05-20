@@ -862,44 +862,52 @@ _SHAPE_DESCRIPTION = {
 
 
 def narrate_bit_manipulation(pid: str, problem_data: dict, parsed: dict) -> str | None:
-    """Produce a CoT for a bit_manipulation problem.
+    """Produce a CoT for a bit_manipulation problem — huikang's format only.
 
-    Dispatch:
-      1. **Try huikang's reasoner first** on the raw problem. It handles all of
-         v1's shapes (SINGLE, PAIR_*, TRIPLE_*, mixed3) natively in its
-         column-walking format (~9KB), matching the corpus distribution.
-         If it produces a gold-matching rationale, return that.
-      2. **Fall back to our declarative narrator** using v2's parsed rule.
-         Only triggers for v2-specific shapes (MAJ, CHO, PAR4, AOA, OAO, AXA,
-         OXO) — shapes huikang's reasoner can't represent.
-      3. Return None if both fail or if huikang's rationale would emit a
-         wrong-answer \\boxed{}.
+    Calls huikang's ``reasoning_bit_manipulation`` and returns its output
+    verbatim if it produces a gold-matching rationale (~9KB column-walking
+    format that matches huikang's existing corpus). Returns None otherwise so
+    the caller skips the problem.
+
+    Rationale for the strict policy: training on mixed formats (huikang's
+    column-walking + our declarative) caused bit_manip in-sample accuracy to
+    drop from 0.86 → 0.08 in our prior eval. Keeping every bit_manip rationale
+    in the same format is non-negotiable. Problems huikang's reasoner can't
+    represent get excluded from the corpus rather than narrated in a different
+    style.
     """
-    # Step 1: huikang's reasoner
-    if problem_data:
-        try:
-            from reasoners.bit_manipulation import reasoning_bit_manipulation
-            problem = Problem(
-                id=pid,
-                category="bit_manipulation",
-                examples=[
-                    Example(e["input_value"], e["output_value"])
-                    for e in problem_data.get("examples", [])
-                ],
-                question=problem_data.get("question", parsed.get("query", "")),
-                answer=problem_data.get("answer", parsed.get("predicted", "")),
-            )
-            huikang_out = reasoning_bit_manipulation(problem)
-        except Exception:
-            huikang_out = None
-        if huikang_out is not None:
-            extracted = extract_final_answer(huikang_out)
-            expected = parsed.get("predicted") or problem_data.get("answer", "")
-            if _verify(expected, extracted):
-                return huikang_out
-            # huikang's answer disagrees with gold — fall through to declarative
+    if not problem_data:
+        return None
+    try:
+        from reasoners.bit_manipulation import reasoning_bit_manipulation
+        problem = Problem(
+            id=pid,
+            category="bit_manipulation",
+            examples=[
+                Example(e["input_value"], e["output_value"])
+                for e in problem_data.get("examples", [])
+            ],
+            question=problem_data.get("question", parsed.get("query", "")),
+            answer=problem_data.get("answer", parsed.get("predicted", "")),
+        )
+        huikang_out = reasoning_bit_manipulation(problem)
+    except Exception:
+        return None
+    if huikang_out is None:
+        return None
+    extracted = extract_final_answer(huikang_out)
+    expected = parsed.get("predicted") or problem_data.get("answer", "")
+    if not _verify(expected, extracted):
+        return None
+    return huikang_out
 
-    # Step 2: declarative narrator for v2-specific shapes
+
+def _legacy_declarative_narrate_bit_manipulation(pid: str, problem_data: dict, parsed: dict) -> str:
+    """DEAD CODE. Declarative narrator that emits the v2-rule-statement format.
+    Retained for reference only — produces format that doesn't blend with
+    huikang's column-walking rationales and DEGRADED bit_manip accuracy when
+    used. Do not call.
+    """
     rule = parsed["rule"]
     examples = parsed["examples"]
     query = parsed["query"]

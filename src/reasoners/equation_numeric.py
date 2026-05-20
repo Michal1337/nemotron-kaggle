@@ -267,7 +267,38 @@ def _apply_op(found: FoundOp, a_str: str, b_str: str) -> tuple[str, list[str]]:
     return final, steps
 
 
-def reasoning_equation_numeric(problem: Problem) -> str | None:
+_DEFAULT_TRANSFORM_ORDER = ((True, True), (False, False), (True, False), (False, True))
+
+
+def _resolve_transform_order(preferred_mode: str | None) -> tuple[tuple[bool, bool], ...]:
+    """Reorder the (rev_ops, rev_res) search to put preferred_mode first.
+
+    Lets a caller (e.g. the cryptarithm narrator that decoded an Alice-solved
+    problem) nudge huikang to pick a particular interpretation when the example
+    set is satisfiable under multiple transforms. The full 4-combo space is
+    still explored, just in a different order — so the first match (which the
+    reasoner commits to) aligns with the caller's known-correct interpretation.
+    """
+    if preferred_mode is None:
+        return _DEFAULT_TRANSFORM_ORDER
+    if preferred_mode in ("standard", "identity", "none"):
+        head = (False, False)
+    elif preferred_mode in ("little_endian", "alice", "rev_ops_res"):
+        head = (True, True)
+    elif preferred_mode == "rev_ops":
+        head = (True, False)
+    elif preferred_mode == "rev_res":
+        head = (False, True)
+    else:
+        return _DEFAULT_TRANSFORM_ORDER
+    rest = tuple(combo for combo in _DEFAULT_TRANSFORM_ORDER if combo != head)
+    return (head,) + rest
+
+
+def reasoning_equation_numeric(
+    problem: Problem,
+    preferred_mode: str | None = None,
+) -> str | None:
     lines: list[str] = []
     lines.append("We need to infer the transformation rule from the examples.")
     lines.append("I will put my final answer inside \\boxed{}.")
@@ -453,13 +484,9 @@ def reasoning_equation_numeric(problem: Problem) -> str | None:
         ]
 
         n_ex = len(group)
+        transform_order = _resolve_transform_order(preferred_mode)
         for set_name, cand_fn in candidate_sets:
-            for rev_ops, rev_res in (
-                (True, True),
-                (False, False),
-                (True, False),
-                (False, True),
-            ):
+            for rev_ops, rev_res in transform_order:
                 # Use fixed example order for paragraph header
                 cycled = list(group)
 
