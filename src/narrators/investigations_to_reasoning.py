@@ -1606,7 +1606,66 @@ def main() -> None:
     # ------------------------------------------------------------------
     # Investigations source (default)
     # ------------------------------------------------------------------
+    # Load problems.jsonl once for the bit_manipulation iteration mode.
+    all_problems: dict[str, str] = {}
+    problems_jsonl = repo / "problems.jsonl"
+    if problems_jsonl.is_file():
+        with problems_jsonl.open() as pf:
+            for line in pf:
+                try:
+                    o = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if "id" in o and "category" in o:
+                    all_problems[o["id"]] = o["category"]
+
     for cat in args.categories:
+        # For bit_manipulation we iterate every problem in the category (not
+        # just the ones with v2 investigation files). huikang's reasoner has
+        # its own search and may solve problems v2 missed (and vice versa);
+        # walking problems.jsonl maximises coverage.
+        if cat == "bit_manipulation":
+            cat_pids = sorted(pid for pid, c in all_problems.items() if c == cat)
+            print(f"\n=== {cat}: walking {len(cat_pids)} problems (huikang-strict) ===")
+            for pid in cat_pids:
+                stats["seen"] += 1
+                prob_file = problems_dir / f"{pid}.jsonl"
+                if not prob_file.is_file():
+                    stats["missing_problem"] += 1
+                    continue
+                with prob_file.open() as pf:
+                    problem_data = json.loads(pf.readline())
+                try:
+                    trace = narrate_bit_manipulation(pid, problem_data, parsed={})
+                except Exception as exc:
+                    stats["narration_failed"] += 1
+                    if args.verbose:
+                        print(f"    !! {pid}: {exc}")
+                    continue
+                if trace is None:
+                    stats["narration_skipped"] += 1
+                    continue
+                target = out_dir / f"{pid}.txt"
+                if target.exists() and not args.overwrite:
+                    stats["skipped_exists"] += 1
+                    continue
+                if args.dry_run:
+                    stats["would_write"] += 1
+                    if len(sample_outputs) < 2:
+                        sample_outputs.append((pid, trace))
+                else:
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text(trace, encoding="utf-8")
+                    stats["written"] += 1
+                    written += 1
+                    if args.limit and written >= args.limit:
+                        print(f"\n--limit {args.limit} reached, stopping.")
+                        break
+            if args.limit and written >= args.limit:
+                break
+            continue
+
+        # Default: walk investigation files for solver-driven categories.
         cat_dir = inv_root / cat / "correct"
         if not cat_dir.is_dir():
             print(f"  skipping {cat}: {cat_dir} not found")

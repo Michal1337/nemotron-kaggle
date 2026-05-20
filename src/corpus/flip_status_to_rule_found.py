@@ -60,7 +60,12 @@ def main() -> None:
                 pid = o["id"]
                 has_reasoning = (reasoning_dir / f"{pid}.txt").is_file()
                 has_inv = (inv_root / cat / "correct" / f"{pid}.txt").is_file()
-                if has_reasoning and has_inv:
+                # bit_manipulation rationales come from huikang's reasoner
+                # called directly on the problem (no solver investigation
+                # needed). For that category, require only a reasoning file.
+                inv_required = cat != "bit_manipulation"
+                ok = has_reasoning and (has_inv or not inv_required)
+                if ok:
                     flipped.append((pid, cat, o.get("status", "unknown")))
                     o["status"] = "rule_found"
                 elif not has_reasoning:
