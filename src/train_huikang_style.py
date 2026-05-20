@@ -70,7 +70,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--pretrained-adapter", default=None,
                    help="Optional path to an already-trained adapter to warm-start from. "
                         "If omitted, starts from fresh LoRA init (RESET_WEIGHTS=True).")
-    p.add_argument("--num-steps", type=int, default=1000)
+    p.add_argument("--num-steps", type=int, default=1000,
+                   help="Total optimizer steps. The training loop unrolls "
+                        "the corpus across as many epochs as needed to cover "
+                        "this many steps (with per-epoch reshuffling under "
+                        "--shuffle-dataset). LR linearly decays to 0 across "
+                        "all steps.")
     p.add_argument("--batch-size", type=int, default=32)
     p.add_argument("--micro-batch-size", type=int, default=4)
     p.add_argument("--max-seq-len", type=int, default=8192)
@@ -455,19 +460,31 @@ def main() -> None:
     device = next(model.parameters()).device
     optimizer: torch.optim.AdamW | None = None
 
-    indices = list(range(len(examples)))
+    # Unroll enough epochs to cover the requested --num-steps. Each epoch gets
+    # its own shuffle (different seed offset) under --shuffle-dataset so
+    # multi-epoch training doesn't see the exact same batch sequence twice.
+    base_indices = list(range(len(examples)))
+    steps_per_epoch = max(1, len(base_indices) // args.batch_size)
+    epochs_needed = max(1, math.ceil(args.num_steps / steps_per_epoch))
+    indices: list[int] = []
     if args.shuffle_dataset:
-        rng = random.Random(args.seed)
-        rng.shuffle(indices)
-        print(f"  shuffled {len(indices)} examples (seed={args.seed})")
+        for ep in range(epochs_needed):
+            rng = random.Random(args.seed + ep)
+            shuffled = list(base_indices)
+            rng.shuffle(shuffled)
+            indices.extend(shuffled)
+        print(f"  shuffled {len(base_indices)} examples × {epochs_needed} epoch(s) "
+              f"= {len(indices)} (seed={args.seed})")
     else:
-        print(f"  keeping corpus order ({len(indices)} examples)")
+        for _ in range(epochs_needed):
+            indices.extend(base_indices)
+        print(f"  keeping corpus order × {epochs_needed} epoch(s) "
+              f"= {len(indices)} examples")
 
-    max_steps = len(examples) // args.batch_size
-    num_steps = min(args.num_steps, max_steps)
-    if num_steps < args.num_steps:
-        print(f"  WARNING: clamped num_steps to {num_steps} (data ran out)")
-    print(f"  steps={num_steps}, batch={args.batch_size}, micro_batch={args.micro_batch_size}, lr={args.learning_rate}")
+    num_steps = args.num_steps
+    print(f"  steps={num_steps}  (≈{num_steps / steps_per_epoch:.2f} epochs over "
+          f"{len(base_indices)} examples)  batch={args.batch_size}  "
+          f"micro_batch={args.micro_batch_size}  lr={args.learning_rate}")
 
     step = 0
     for batch_start in range(0, len(indices), args.batch_size):
