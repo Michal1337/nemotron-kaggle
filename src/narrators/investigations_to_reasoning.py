@@ -1468,6 +1468,11 @@ def main() -> None:
                 if args.verbose:
                     print(f"    !! {pid}: {exc}")
                 continue
+            if trace is None:
+                # Narrator deliberately skipped (huikang's reasoner couldn't
+                # match Alice's answer, or op outside its pool, etc.).
+                stats["narration_skipped"] += 1
+                continue
 
             target = out_dir / f"{pid}.txt"
             if target.exists() and not args.overwrite:
@@ -1543,6 +1548,9 @@ def main() -> None:
                 stats["narration_failed"] += 1
                 if args.verbose:
                     print(f"    !! {pid}: {exc}")
+                continue
+            if trace is None:
+                stats["narration_skipped"] += 1
                 continue
 
             target = out_dir / f"{pid}.txt"
