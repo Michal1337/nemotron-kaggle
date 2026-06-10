@@ -74,6 +74,37 @@ def _dset(d):
     return "".join(str(x) for x in sorted(d))
 
 
+def _expr(op, L, R):
+    """Arithmetically exact expression string for 'expr=value' claim lines."""
+    if op == 'add':
+        return f"{L}+{R}"
+    if op == 'add_p1':
+        return f"{L}+{R}+1"
+    if op == 'add_m1':
+        return f"{L}+{R}-1"
+    if op == 'mul':
+        return f"{L}*{R}"
+    if op == 'mul_p1':
+        return f"{L}*{R}+1"
+    if op == 'mul_m1':
+        return f"{L}*{R}-1"
+    if op == 'sub_signed':
+        return f"{L}-{R}"
+    if op == 'rsub_signed':
+        return f"{R}-{L}"
+    if op == 'absdiff':
+        return f"|{L}-{R}|"
+    if op == 'neg_absdiff':
+        return f"-|{L}-{R}|"
+    if op == 'mod':
+        return f"{L} mod {R}"
+    if op == 'rmod':
+        return f"{R} mod {L}"
+    if op == 'gcd':
+        return f"gcd({L},{R})"
+    return f"{L}?{R}"
+
+
 def _opsym(op):
     if op in S.MUL_FAM:
         return '*'
@@ -517,8 +548,7 @@ class Narrator:
             tup_s = "".join(f"{s}{d}" for s, d in zip(unknowns, tup))
             L, R = decode_pair(inp, mode, asg)
             okq = exp is not None and S.check_example_full(inp, out, op, mode, asg)
-            em.emit(f"  {tup_s} {L}{_opsym(op)}{R}"
-                    f"={v} {'ok' if okq else 'no'}")
+            em.emit(f"  {tup_s} {_expr(op, L, R)}={v} {'ok' if okq else 'no'}")
             if okq:
                 found = True
                 for s in unknowns:
@@ -659,8 +689,7 @@ class Narrator:
             L, R = decode_pair(inp, mode, asg)
             exp, v = expected_body(inp, out, op, mode, asg)
             got_ok = exp is not None and all(asg[c] == int(d) for c, d in zip(body, exp))
-            sym = _opsym(op)
-            em.emit(f"  e{k+1}: {L}{sym}{R}={v}, result digits {''.join(str(asg[c]) for c in body)} "
+            em.emit(f"  e{k+1}: {_expr(op, L, R)}={v}, result digits {''.join(str(asg[c]) for c in body)} "
                     f"want {exp if exp else '?'} {'ok' if got_ok else 'MISMATCH'}")
             if not got_ok:
                 raise Abort  # hard abort: never emit an acknowledged failure
@@ -677,10 +706,9 @@ class Narrator:
             asg = {s: next(iter(domains[s])) for s in (q[0], q[1], q[3], q[4])}
             L, R = decode_pair(q, mode, asg)
             v = S.op_value(op, L, R)
-            sym = _opsym(op)
             em.emit(f"Query {q}: {q[0]}{q[1]}={asg[q[0]]}{asg[q[1]]} {q[3]}{q[4]}={asg[q[3]]}{asg[q[4]]}"
                     + (f" (digits reversed: {L} and {R})" if mode == "rev_both" else f" -> {L} and {R}"))
-            em.emit(f"  {L}{sym}{R} = {v}")
+            em.emit(f"  {_expr(op, L, R)} = {v}")
             s = str(abs(v))
             if mode == "rev_both":
                 em.emit(f"  write reversed: {s[::-1]}")
@@ -778,8 +806,7 @@ def narrate_certificate(nar, name, ops, mode, witness, ans):
             continue
         L, R = decode_pair(inp, mode, witness)
         v = S.op_value(op, L, R)
-        sym = _opsym(op)
-        em.emit(f"  e{k+1}: {L}{sym}{R}={v} ok")
+        em.emit(f"  e{k+1}: {_expr(op, L, R)}={v} ok")
     em.emit(f"  its query answer: {ans}")
 
 
