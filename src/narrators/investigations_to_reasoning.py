@@ -447,28 +447,23 @@ def _decode_output(out: str, mapping: dict[str, int]) -> str:
 
 
 def narrate_pure_concat(pid: str, problem_data: dict, parsed: dict) -> str | None:
-    """Narrator for pure-concat cryptarithm — defers to huikang's reasoner.
+    """Narrator for pure-concat cryptarithm — uses the honest narrator's compact
+    Step-0 concat path (crypt_narr_honest.concat_cot).
 
-    huikang's ``reasoning_cryptarithm`` handles concat-only problems (forward
-    and reverse). We just build a Problem and call it; output is bit-identical
-    to huikang's training rationales.
-
-    Returns None if huikang's reasoner produces an answer that differs from
-    Alice's verified answer — happens when the query operator is unseen in the
-    examples and huikang defaults to fwd-concat while Alice solved as rev-concat.
-    Better to skip than emit a wrong-answer rationale into training.
+    vs the old huikang reasoner: same forward+reverse concat coverage, but a
+    cleaner/shorter format. deduce (query op seen in the examples) is read off
+    honestly; guess (query op unseen) defaults to forward concatenation. The
+    ending keeps the standard dataset template (incl. the \\boxed{-} placeholder
+    line) for cross-category consistency. concat_cot returns None (drop) when its
+    concat answer differs from Alice's verified answer.
     """
+    from reasoners.crypt_narr_honest import concat_cot
     examples = parsed["examples"]
-    query = parsed["query"]
+    query = str(parsed["query"])
     predicted = parsed["predicted"]
-    out = _huikang_cryptarithm_reasoning(pid, examples, query, predicted)
-    if out is None:
-        return None
-    # Verify huikang's rationale ends with the same answer as our verified solver.
-    extracted = extract_final_answer(out)
-    if extracted != predicted:
-        return None
-    return out
+    qop = query[2] if len(query) == 5 else None
+    seen = qop is not None and any(str(i)[2] == qop for i, _ in examples)
+    return concat_cot(examples, query, predicted, "deduce" if seen else "guess")
 
 
 def _legacy_narrate_pure_concat(pid: str, problem_data: dict, parsed: dict) -> str:
@@ -1163,10 +1158,11 @@ def narrate_cryptarithm(pid: str, problem_data: dict, parsed: dict) -> str | Non
     query = parsed["query"]
     predicted = parsed["predicted"]
 
-    # If no symbol mapping was needed (pure concat), use huikang's concat reasoner.
+    # If no symbol mapping was needed (pure concat), use the honest Step-0 concat
+    # path. Drop (return None) rather than fall back to the legacy 【】 format, so
+    # trainval-v2 crypt CoTs are uniformly the new format.
     if not mapping:
-        out = narrate_pure_concat(pid, problem_data, parsed)
-        return out if out is not None else _legacy_narrate_pure_concat(pid, problem_data, parsed)
+        return narrate_pure_concat(pid, problem_data, parsed)
 
     # Arithmetic path: decode everything to numeric form, then defer to huikang.
     decoded_examples: list[tuple[str, str]] = []

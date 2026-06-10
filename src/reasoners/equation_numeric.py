@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from collections import defaultdict
 from dataclasses import dataclass
@@ -12,66 +13,43 @@ _EXPR_RE = re.compile(r"^(\d+)(\D)(\d+)$")
 
 
 def _common_candidates(a: int, b: int, sa: str, sb: str) -> list[tuple[str, str]]:
-    """Common operations tried first."""
+    """Common operations tried first.
+
+    Order: concat, rconcat, add, sub, absdiff, negabsdiff, rsub, mul.
+    Asymmetric placement of sub vs rsub: `sub` is high-priority (catches
+    signed-result cases when query has a<b and examples have a>=b), but
+    `rsub` is demoted past absdiff/negabsdiff (catches the inverse: when
+    examples have a<b and rsub fits, the unsigned absdiff usually matches
+    the gold's intent better). Empirically +8 deduce on 596 vs symmetric
+    sub-then-rsub placement (550 → 558).
+    """
     out: list[tuple[str, str]] = []
-    out.append(("concatenation", sa + sb))
-    out.append(("reverse concatenation", sb + sa))
-    out.append(("addition", str(a + b)))
-    out.append(("absolute difference", str(abs(a - b))))
-    out.append(("negated absolute difference", str(-abs(a - b))))
-    out.append(("subtraction (a-b)", str(a - b)))
-    out.append(("reverse subtraction (b-a)", str(b - a)))
-    out.append(("multiplication", str(a * b)))
+    out.append(("concat", sa + sb))
+    out.append(("rconcat", sb + sa))
+    out.append(("add", str(a + b)))
+    out.append(("sub", str(a - b)))
+    out.append(("absdiff", str(abs(a - b))))
+    out.append(("negabsdiff", str(-abs(a - b))))
+    out.append(("rsub", str(b - a)))
+    out.append(("mul", str(a * b)))
     return out
 
 
 def _rare_candidates(a: int, b: int, sa: str, sb: str) -> list[tuple[str, str]]:
-    """Rare operations tried if common ones don't match."""
+    """Trimmed rare pool — keeps only the 5 ops that actually fire as first-fit
+    in our 596-pid deduce universe (verified by op-usage audit). The 23 ops
+    we dropped (sub±1, gcd, lcm, absdiff±2, div, mod, rdiv, rmod, all digit_*,
+    cross_*, det_*) were never picked in any solved pid in either deduce or
+    guess, so removing them costs zero coverage and shaves ~92 trial lines
+    (23 ops × 4 transforms) per deduce CoT."""
     out: list[tuple[str, str]] = []
-    out.append(("multiply+1", str(a * b + 1)))
-    out.append(("multiply-1", str(a * b - 1)))
+    out.append(("mul+1", str(a * b + 1)))
+    out.append(("mul-1", str(a * b - 1)))
     out.append(("add+1", str(a + b + 1)))
     out.append(("add-1", str(a + b - 1)))
-    out.append(("sub+1", str(a - b + 1)))
-    out.append(("sub-1", str(a - b - 1)))
-    # Extension ops (originally from Alice's solver pool) — added to the END so
-    # huikang's existing op-selection order is preserved on previously-known
-    # problems.
-    import math as _math
-    if a != 0 or b != 0:
-        out.append(("gcd", str(_math.gcd(abs(a), abs(b)))))
-        try:
-            lcm_val = _math.lcm(abs(a), abs(b))
-            out.append(("lcm", str(lcm_val)))
-        except Exception:
-            pass
-    out.append(("absolute difference - 2", str(abs(a - b) - 2)))
-    out.append(("absolute difference + 2", str(abs(a - b) + 2)))
     if a != 0 and b != 0:
         big, small = max(a, b), min(a, b)
         out.append(("max mod min", str(big % small)))
-    if b != 0:
-        out.append(("integer division (a/b)", str(a // b)))
-        out.append(("modulo (a mod b)", str(a % b)))
-    if a != 0:
-        out.append(("reverse division (b/a)", str(b // a)))
-        out.append(("reverse modulo (b mod a)", str(b % a)))
-    if len(sa) == 2 and len(sb) == 2:
-        d1, d2, d3, d4 = int(sa[0]), int(sa[1]), int(sb[0]), int(sb[1])
-        out.append(("digit absolute diff", str(abs(d1 - d3)) + str(abs(d2 - d4))))
-        out.append(("digit add mod10", str((d1 + d3) % 10) + str((d2 + d4) % 10)))
-        out.append(("digit sub mod10", str((d1 - d3) % 10) + str((d2 - d4) % 10)))
-        out.append(("cross multiply", str(d1 * d3 + d2 * d4)))
-        out.append(("cross multiply rev", str(d1 * d4 + d2 * d3)))
-        out.append(("digit multiply", str(d1 * d3) + str(d2 * d4)))
-        out.append(("digit multiply rev", str(d1 * d4) + str(d2 * d3)))
-        out.append(("digit sum diff", str((d1 + d2) - (d3 + d4))))
-        out.append(("digit sum sum", str((d1 + d2) + (d3 + d4))))
-        out.append(("digit product diff", str(d1 * d2 - d3 * d4)))
-        out.append(("digit product sum", str(d1 * d2 + d3 * d4)))
-        det_val = d1 * d4 - d2 * d3
-        out.append(("determinant", str(det_val)))
-        out.append(("abs determinant", str(abs(det_val))))
     return out
 
 
@@ -82,35 +60,35 @@ def _all_candidates(a: int, b: int, sa: str, sb: str) -> list[tuple[str, str]]:
 
 def _expr(name: str, a: str, b: str) -> str:
     """Return the math expression for an operation, e.g. '94 + 48'."""
-    if name == "addition":
+    if name == "add":
         return f"{a} + {b}"
-    if name == "subtraction (a-b)":
+    if name == "sub":
         return f"{a} - {b}"
-    if name == "reverse subtraction (b-a)":
+    if name == "rsub":
         return f"{b} - {a}"
-    if name == "multiplication":
+    if name == "mul":
         if len(a) >= 2:
             decomp = " + ".join(
                 str(int(d) * (10 ** (len(a) - 1 - i))) for i, d in enumerate(a)
             )
             return f"({decomp}) * {b}"
         return f"{a} * {b}"
-    if name == "absolute difference":
+    if name == "absdiff":
         return f"|{a} - {b}|"
-    if name == "negated absolute difference":
+    if name == "negabsdiff":
         return f"-|{a} - {b}|"
-    if name == "concatenation":
+    if name == "concat":
         return f"{a} || {b}"
-    if name == "reverse concatenation":
+    if name == "rconcat":
         return f"{b} || {a}"
-    if name == "multiply+1":
+    if name == "mul+1":
         if len(a) >= 2:
             decomp = " + ".join(
                 str(int(d) * (10 ** (len(a) - 1 - i))) for i, d in enumerate(a)
             )
             return f"({decomp}) * {b} + 1"
         return f"{a} * {b} + 1"
-    if name == "multiply-1":
+    if name == "mul-1":
         if len(a) >= 2:
             decomp = " + ".join(
                 str(int(d) * (10 ** (len(a) - 1 - i))) for i, d in enumerate(a)
@@ -125,13 +103,13 @@ def _expr(name: str, a: str, b: str) -> str:
         return f"{a} - {b} + 1"
     if name == "sub-1":
         return f"{a} - {b} - 1"
-    if name == "integer division (a/b)":
+    if name == "div":
         return f"{a} / {b}"
-    if name == "modulo (a mod b)":
+    if name == "mod":
         return f"{a} mod {b}"
-    if name == "reverse division (b/a)":
+    if name == "rdiv":
         return f"{b} / {a}"
-    if name == "reverse modulo (b mod a)":
+    if name == "rmod":
         return f"{b} mod {a}"
     if name == "max mod min":
         big, small = (a, b) if int(a) >= int(b) else (b, a)
@@ -140,9 +118,9 @@ def _expr(name: str, a: str, b: str) -> str:
         return f"gcd({a}, {b})"
     if name == "lcm":
         return f"lcm({a}, {b})"
-    if name == "absolute difference - 2":
+    if name == "absdiff-2":
         return f"|{a} - {b}| - 2"
-    if name == "absolute difference + 2":
+    if name == "absdiff+2":
         return f"|{a} - {b}| + 2"
     if len(a) == 2 and len(b) == 2:
         d1, d2, d3, d4 = a[0], a[1], b[0], b[1]
@@ -178,15 +156,15 @@ def _expr(name: str, a: str, b: str) -> str:
 def _expr_intermediate(name: str, a: str, b: str) -> str:
     """Return intermediate evaluated form for operations with multiplications, else ''."""
     ia, ib = int(a), int(b)
-    if name in ("multiply+1", "multiply-1", "multiplication") and len(a) >= 2:
+    if name in ("mul+1", "mul-1", "mul") and len(a) >= 2:
         # Decompose a by place value: 70 → [70, 0], 73 → [70, 3]
         places = [int(d) * (10 ** (len(a) - 1 - i)) for i, d in enumerate(a)]
         decomp = " + ".join(f"{p} * {b}" for p in places)
         evald = " + ".join(str(p * ib) for p in places)
         product_sum = sum(p * ib for p in places)
-        if name == "multiply+1":
+        if name == "mul+1":
             return f"{decomp} + 1 = {evald} + 1 = {product_sum} + 1"
-        if name == "multiply-1":
+        if name == "mul-1":
             return f"{decomp} - 1 = {evald} - 1 = {product_sum} - 1"
         return f"{decomp} = {evald}"
     if len(a) == 2 and len(b) == 2:
@@ -233,15 +211,13 @@ def _apply_op(found: FoundOp, a_str: str, b_str: str) -> tuple[str, list[str]]:
 
     # Header line always present
     if found.rev_ops and found.rev_res:
-        steps.append(
-            f"reversed operands [{a_str}->{ta}, {b_str}->{tb}] and reversed result"
-        )
+        steps.append(f"[rev_both] {a_str}->{ta}, {b_str}->{tb}")
     elif found.rev_ops:
-        steps.append(f"reversed operands [{a_str}->{ta}, {b_str}->{tb}]")
+        steps.append(f"[rev_ops] {a_str}->{ta}, {b_str}->{tb}")
     elif found.rev_res:
-        steps.append("reversed result")
+        steps.append("[rev_res]")
     else:
-        steps.append("identity")
+        steps.append("[id]")
 
     # Find the matching candidate
     raw_result = ""
@@ -334,101 +310,65 @@ def _detect_fmt(op_char: str, group: list[tuple[str, str, str]]) -> tuple[str, l
     return "num", list(group)
 
 
+def _sigil_check_summary(
+    op_chars: list[str],
+    detected_fmts: dict[str, str],
+    by_op: dict[str, list[tuple[str, str, str]]],
+    transformed_groups: dict[str, list[tuple[str, str, str]]],
+) -> list[str]:
+    """Always-on sigil check listing every example for every operator.
+
+    Emitted directly under "The example operators are: ..." so the model learns
+    a consistent "check then proceed" routine instead of only seeing sigil
+    reasoning on the ~30% of guess problems where a sigil actually fires.
+    Each operator block enumerates every example explicitly — for sigil ops
+    the decoded form is shown side-by-side; for plain ops the examples are
+    listed verbatim as a no-op confirmation.
+    """
+    out = ["Sign-marker check:"]
+    for op in op_chars:
+        fmt = detected_fmts.get(op, "num")
+        orig = by_op.get(op, [])
+        tgrp = transformed_groups.get(op, orig)
+        if fmt == "neg_prefix":
+            out.append(f"  【{op}】: sign sigil at output PREFIX — decode `{op}X` → `-X`.")
+            for (a, b, raw), (_, _, dec) in zip(orig, tgrp):
+                if raw == dec:
+                    out.append(f"    {a}{op}{b} = {raw}  (no sigil, kept as-is)")
+                else:
+                    out.append(f"    {a}{op}{b} = {raw}  →  {a}{op}{b} = {dec}")
+        elif fmt == "neg_suffix":
+            out.append(f"  【{op}】: sign sigil at output SUFFIX — decode `X{op}` → `-X`.")
+            for (a, b, raw), (_, _, dec) in zip(orig, tgrp):
+                if raw == dec:
+                    out.append(f"    {a}{op}{b} = {raw}  (no sigil, kept as-is)")
+                else:
+                    out.append(f"    {a}{op}{b} = {raw}  →  {a}{op}{b} = {dec}")
+        else:
+            out.append(f"  【{op}】: no sign sigil — outputs are plain digits.")
+            for (a, b, raw) in orig:
+                out.append(f"    {a}{op}{b} = {raw}")
+    return out
+
+
 def _sigil_reasoning_block(
     op_char: str,
     fmt: str,
     group: list[tuple[str, str, str]],
     transformed_group: list[tuple[str, str, str]],
 ) -> list[str]:
-    """Emit the per-operator sigil reasoning paragraph.
-
-    Returns an empty list when ``fmt == "num"`` or when the transform is a
-    no-op (e.g. ``op_char == "-"`` and the output already starts with ``-``,
-    so stripping the sigil and re-attaching ``-`` yields the same string).
-    Keeping the no-op suppression here means callers never emit the dead
-    "We now consider the outputs to be ..." line that just echoes the prior
-    "outputs are ..." line.
+    """Deprecated — sigil reasoning is now emitted once at the top of the CoT
+    by `_sigil_check_summary`. Kept as a no-op for backward compatibility with
+    existing call sites.
     """
-    if fmt == "num":
-        return []
-
-    is_prefix = fmt == "neg_prefix"
-    position_word = "begin" if is_prefix else "end"
-
-    # Identify the marker character actually appearing on the outputs:
-    #   - For op_char == "-" with leading "-" on outputs: the marker IS "-"
-    #     (the natural minus sign, which happens to coincide with the op).
-    #   - For non-"-" op_char appearing as prefix/suffix: the marker is the
-    #     op_char itself acting as a sigil.
-    if is_prefix:
-        sigil_examples = [(a, b, out) for (a, b, out) in group if len(out) > 1 and (out.startswith(op_char) or out.startswith("-"))]
-    else:
-        sigil_examples = [(a, b, out) for (a, b, out) in group if len(out) > 1 and out.endswith(op_char)]
-    if not sigil_examples:
-        return []
-    marker_char = sigil_examples[0][2][0] if is_prefix else sigil_examples[0][2][-1]
-
-    samples_str = "; ".join(f"{a}{op_char}{b} = {out}" for a, b, out in sigil_examples[:3])
-
-    # Pair each sigil example with its decoded (transformed) form for the
-    # "decoded as" enumeration. When the transform is identity (the op-char
-    # IS "-"), we still emit a paragraph but skip the redundant decoding
-    # list — there's nothing to decode.
-    tmap = {(a, b, out): t for (a, b, out), (_, _, t) in zip(group, transformed_group)}
-    decoded_pairs = [
-        (out, tmap.get((a, b, out), out))
-        for a, b, out in sigil_examples
-        if tmap.get((a, b, out), out) != out
-    ]
-
-    lines: list[str] = []
-    if op_char == "-" and marker_char == "-":
-        # Natural minus sign case — explain WHY no decoding step is needed.
-        first_neg = sigil_examples[0][2]  # e.g. "-91"
-        bare_digits = first_neg[1:]       # "91"
-        # If the digits have a leading zero (e.g. "-06"), call that out
-        # explicitly, since it signals fixed-width zero padding.
-        if bare_digits.startswith("0") and len(bare_digits) > 1:
-            pad_note = " (with leading-zero padding)"
-        else:
-            pad_note = ""
-        lines.append(
-            f"Observation: for operator 【{op_char}】, some outputs {position_word} with "
-            f"`-` ({samples_str}). Since `-` is the operator AND the standard "
-            f"arithmetic minus sign, the leading `-` indicates the operation "
-            f"can produce signed (negative) results. No decoding step is "
-            f"needed — we read `{first_neg}` directly as the value -{int(bare_digits)}{pad_note}, "
-            f"and we expect to find a rule for 【{op_char}】 that yields negative "
-            f"outputs (e.g. negated absolute difference or signed subtraction)."
-        )
-    elif is_prefix:
-        decoded_str = ", ".join(f"`{out}` -> `{t}`" for out, t in decoded_pairs[:3])
-        lines.append(
-            f"Observation: for operator 【{op_char}】, some outputs begin with "
-            f"the character `{op_char}` ({samples_str}). `{op_char}` is not a "
-            f"decimal digit (0-9), so it cannot be part of the numeric "
-            f"output. The most plausible reading is that `{op_char}` is a "
-            f"sign marker: an output `{op_char}X` encodes the negative value "
-            f"-X. We decode these as: {decoded_str}. After we infer the rule, "
-            f"if our answer is negative we will re-attach the `{op_char}` "
-            f"prefix to encode the sign."
-        )
-    else:
-        decoded_str = ", ".join(f"`{out}` -> `{t}`" for out, t in decoded_pairs[:3])
-        lines.append(
-            f"Observation: for operator 【{op_char}】, some outputs end with "
-            f"the character `{op_char}` ({samples_str}). `{op_char}` is not a "
-            f"decimal digit (0-9), so it cannot be part of the numeric "
-            f"output. The most plausible reading is that `{op_char}` is a "
-            f"sign marker: an output `X{op_char}` encodes the negative value "
-            f"-X. We decode these as: {decoded_str}. After we infer the rule, "
-            f"if our answer is negative we will re-attach the `{op_char}` "
-            f"suffix to encode the sign."
-        )
-    return lines
+    return []
 
 
-_DEFAULT_TRANSFORM_ORDER = ((True, True), (False, False), (True, False), (False, True))
+# Only id (no reversal) and rev_both (little-endian) are ever the answer in the
+# Alice equation_numeric generator — the mixed rev_ops-only / rev_res-only modes
+# never win and only shadow correct combos. Dropping them: deduce 557->558,
+# guess 83->83 (no regression), ~30% shorter CoTs. (audit: _shuffle_order.py)
+_DEFAULT_TRANSFORM_ORDER = ((True, True), (False, False))
 
 
 def _resolve_transform_order(preferred_mode: str | None) -> tuple[tuple[bool, bool], ...]:
@@ -470,15 +410,15 @@ def _common_candidates_v2(a: int, b: int, sa: str, sb: str) -> list[tuple[str, s
     b`` — sub_signed won't fit, narrator falls through to absdiff).
     """
     out: list[tuple[str, str]] = []
-    out.append(("concatenation", sa + sb))
-    out.append(("reverse concatenation", sb + sa))
-    out.append(("addition", str(a + b)))
+    out.append(("concat", sa + sb))
+    out.append(("rconcat", sb + sa))
+    out.append(("add", str(a + b)))
     # signed ops first — narrator picks them when ambiguous on examples
-    out.append(("subtraction (a-b)", str(a - b)))
-    out.append(("reverse subtraction (b-a)", str(b - a)))
-    out.append(("absolute difference", str(abs(a - b))))
-    out.append(("negated absolute difference", str(-abs(a - b))))
-    out.append(("multiplication", str(a * b)))
+    out.append(("sub", str(a - b)))
+    out.append(("rsub", str(b - a)))
+    out.append(("absdiff", str(abs(a - b))))
+    out.append(("negabsdiff", str(-abs(a - b))))
+    out.append(("mul", str(a * b)))
     return out
 
 
@@ -538,16 +478,123 @@ def _apply_op_v2(found: FoundOp, a_str: str, b_str: str) -> tuple[str, list[str]
         else:
             steps.append(f"Result is non-negative, no prefix needed: {final}")
     else:
-        # fmt == "num" — no sigil was detected in examples. When the
-        # signed rule produces a negative for THIS query, keep the natural
-        # `-` prefix (don't strip) so the answer encodes the sign correctly.
-        # This addresses the under-attach failure mode where no example
-        # happened to be negative, so fmt stayed "num", but the actual rule
-        # is sign-producing and the query falls on the negative side.
+        # fmt == "num" — no sign sigil appeared in the examples. Dataset
+        # convention for a negative result: it is written with the OPERATOR's
+        # OWN symbol as a prefix, in place of a minus sign. When the operator
+        # symbol is '-' that is just the natural '-N'; for any other operator
+        # the negative is '<op>N' (e.g. -17 -> /17), never a literal '-'.
         if final.startswith("-"):
-            steps.append(f"Result is negative: {final}")
+            if found.op_char == "-":
+                steps.append(f"Result is negative: {final}")
+            else:
+                old = final
+                final = found.op_char + final[1:]
+                steps.append(
+                    f"Result is negative; negatives are written with the operator "
+                    f"symbol 【{found.op_char}】 as a prefix (the operator is not '-', "
+                    f"so it stands in for the minus sign): {old} -> {final}")
 
     return final, steps
+
+
+def _mode_tag(rev_ops: bool, rev_res: bool) -> str:
+    if rev_ops and rev_res:
+        return "rev_both"
+    if rev_ops:
+        return "rev_ops"
+    if rev_res:
+        return "rev_res"
+    return "id"
+
+
+def _emit_operator_search(
+    lines: list[str],
+    op_char: str,
+    group: list[tuple[str, str, str]],
+    fmt: str,
+    rev_ops: bool,
+    rev_res: bool,
+) -> "FoundOp | None":
+    """Emit the full-derivation candidate search for ONE operator under ONE
+    orientation; return the first matching rule (or None if no candidate fits).
+
+    Lines keep the legacy per-candidate format with the complete arithmetic for
+    every number (``sub f(45, 21) = 45 - 21 = 24 M``); the search stops at the
+    first match. ``rconcat`` is excluded from the pool — it is redundant with
+    ``concat`` under reversal and only created spurious orientation ties.
+    """
+    n_ex = len(group)
+    cycled = list(group)
+    if rev_ops:
+        segs = []
+        for a, b, o in cycled:
+            seg = f"{a}{op_char}{b}={o} (reverse operands -> {a[::-1]},{b[::-1]}"
+            if rev_res:
+                seg += f", reversed target -> {_rev(o)}"
+            seg += ")"
+            segs.append(seg)
+        ex_disp = ", ".join(segs)
+    else:
+        ex_disp = ", ".join(f"{a}{op_char}{b}={o}" for a, b, o in cycled)
+    lines.append(f"  Operator 【{op_char}】 [{ex_disp}]:")
+    found: "FoundOp | None" = None
+    for cand_fn in (_common_candidates, _rare_candidates):
+        ca_str, cb_str = cycled[0][0], cycled[0][1]
+        cta = ca_str[::-1] if rev_ops else ca_str
+        ctb = cb_str[::-1] if rev_ops else cb_str
+        # rconcat WAS excluded (redundant with concat under reversal), but that
+        # dropped every deduce problem containing an rconcat operator (the
+        # orientation got rejected because that operator couldn't resolve).
+        # Keep it: ties are already broken first-fit below (concat is tried
+        # first in _common_candidates, so genuine concat problems are unaffected).
+        candidates = [(n, r) for n, r in cand_fn(int(cta), int(ctb), cta, ctb)]
+        cand_idx = 0
+        for cand_name, _ in candidates:
+            rotated = [cycled[(cand_idx + j) % n_ex] for j in range(n_ex)]
+            cand_idx += 1
+            parts: list[str] = []
+            all_pass = True
+            for i, (ax, bx, exp_x) in enumerate(rotated):
+                rax = ax[::-1] if rev_ops else ax
+                rbx = bx[::-1] if rev_ops else bx
+                raw = next(
+                    r for n, r in _all_candidates(int(rax), int(rbx), rax, rbx) if n == cand_name
+                )
+                expr_x = _expr(cand_name, rax, rbx)
+                inter_x = _expr_intermediate(cand_name, rax, rbx)
+                if expr_x and inter_x:
+                    detail_x = f" {expr_x} = {inter_x} ="
+                elif expr_x:
+                    detail_x = f" {expr_x} ="
+                else:
+                    detail_x = ""
+                fin = _rev(raw) if rev_res else raw
+                status = "M" if fin == exp_x else "W"
+                if fin != exp_x:
+                    all_pass = False
+                if rev_res and status == "M":
+                    val = f"{raw} {status} -rev-> {fin}"
+                elif rev_res:
+                    val = f"{raw} {status}"
+                else:
+                    val = f"{fin} {status}"
+                if i > 0:
+                    parts.append(f"f({rax},{rbx}) ->{detail_x} {val}")
+                else:
+                    parts.append(f"f({rax}, {rbx}) ={detail_x} {val}")
+                if fin != exp_x:
+                    break
+            if all_pass:
+                if found is None:
+                    parts.append(f"MATCH -> 【{op_char}】 = {cand_name}")
+                    found = FoundOp(op_name=cand_name, rev_ops=rev_ops,
+                                    rev_res=rev_res, fmt=fmt, op_char=op_char)
+                else:
+                    parts.append(
+                        f"also matches, but 【{op_char}】 = {found.op_name} "
+                        f"already chosen (first fit)")
+            lines.append(f"    {cand_name} " + ", ".join(parts))
+    return found
 
 
 def _build_deduce_v2(
@@ -612,148 +659,88 @@ def _build_deduce_v2(
 
     op_list = list(by_op.keys())
     lines.append(f"The example operators are: {', '.join(op_list)}.")
-    lines.append(f"The query operator 【{q_op}】 appears in the examples, so we can infer its rule directly.")
-
-    # Emit sigil reasoning for the query op only (other ops aren't used).
-    sig_lines = _sigil_reasoning_block(
-        q_op, detected_fmts[q_op], by_op[q_op], transformed_groups[q_op]
-    )
-    if sig_lines:
-        lines.append("")
-        lines.extend(sig_lines)
-
-    # Search for the rule on the query operator only.
-    group = transformed_groups[q_op]
-    examples_str = ", ".join(f"{a}{q_op}{b} = {out}" for a, b, out in group)
+    lines.append(
+        f"The query operator 【{q_op}】 is one of them — it appears in the "
+        f"examples, so we can infer its rule directly from those examples.")
     lines.append("")
-    lines.append(f"Looking at operator 【{q_op}】 [{examples_str}]:")
+    lines.extend(_sigil_check_summary(op_list, detected_fmts, by_op, transformed_groups))
+    lines.append("")
+    # ---- Step 1: determine the orientation from ALL operators ----
+    # The whole problem uses one orientation; the correct one is the only one
+    # under which EVERY example operator has a consistent rule. We always check
+    # both orientations and narrate the full search, so the choice is derived,
+    # not asserted.
+    lines.append(
+        "Step 1 - find the orientation. The whole problem uses one orientation "
+        "(identity, or reversed operands + reversed result), so the correct one "
+        "must give every operator a consistent rule. We check both.")
 
-    found: FoundOp | None = None
-    n_ex = len(group)
-    transform_order = _resolve_transform_order(preferred_mode)
-    candidate_sets = [("common", _common_candidates), ("rare", _rare_candidates)]
-    cycled = list(group)
+    # rev_both is the more common orientation (370:177 in the solved set), so
+    # when both orientations explain the examples we prefer it as the tiebreak.
+    orient_specs = [
+        ((True, True), "reversed operands and reversed result"),
+        ((False, False), "identity (operands and result unchanged)"),
+    ]
+    if preferred_mode in ("standard", "big_endian", "id", "identity"):
+        orient_specs = orient_specs[::-1]
 
-    for set_name, cand_fn in candidate_sets:
-        for rev_ops, rev_res in transform_order:
-            # Operand pair display — tuple notation so pairs are visually
-            # distinct (legacy "64 61, 21 05" looks like 4 loose numbers).
-            label = f"{set_name} operations"
-            if rev_ops:
-                rev_parts = ", ".join(f"({ax},{bx})->({ax[::-1]},{bx[::-1]})" for ax, bx, _ in cycled)
-                if rev_res:
-                    label += f" reversed operands [{rev_parts}] and reversed result"
-                else:
-                    label += f" reversed operands [{rev_parts}]"
-            elif rev_res:
-                id_parts = ", ".join(f"({ax},{bx})" for ax, bx, _ in cycled)
-                label += f" identity operands [{id_parts}] reversed result"
+    consistent: list[tuple[tuple[bool, bool], dict[str, FoundOp]]] = []
+    for (rev_ops, rev_res), desc in orient_specs:
+        lines.append("")
+        lines.append(f"Orientation [{_mode_tag(rev_ops, rev_res)}] - {desc}:")
+        op_rules: dict[str, FoundOp] = {}
+        for op_char in op_list:
+            fo = _emit_operator_search(
+                lines, op_char, transformed_groups[op_char],
+                detected_fmts[op_char], rev_ops, rev_res)
+            if fo is None:
+                lines.append(
+                    f"  -> 【{op_char}】 has no consistent rule under "
+                    f"[{_mode_tag(rev_ops, rev_res)}].")
             else:
-                id_parts = ", ".join(f"({ax},{bx})" for ax, bx, _ in cycled)
-                label += f" on identity [{id_parts}]"
-            # The "target" we show in the header must be what the candidate
-            # f(a,b) itself should evaluate to — i.e. the value that, after
-            # any rev_res reversal, equals the example's gold output. When
-            # rev_res is on, that's _rev(exp), not exp.
-            def _disp_target(exp: str) -> str:
-                return _rev(exp) if rev_res else exp
-            if rev_ops:
-                all_expected = ", ".join(
-                    f"({ax[::-1]},{bx[::-1]})->{_disp_target(exp)}" for ax, bx, exp in cycled
-                )
-            else:
-                all_expected = ", ".join(
-                    f"({ax},{bx})->{_disp_target(exp)}" for ax, bx, exp in cycled
-                )
-            # Now the displayed target IS what f(...) must produce directly.
-            # The per-candidate "-rev->" annotation then makes the reversal
-            # step explicit. No misleading "expected" label needed.
-            lines.append(f"  Trying {label} [expected f(a,b) {all_expected}]:")
+                op_rules[op_char] = fo
+        if len(op_rules) == len(op_list):
+            lines.append(
+                f"  -> every operator has a rule under "
+                f"[{_mode_tag(rev_ops, rev_res)}]; this orientation is consistent.")
+            consistent.append(((rev_ops, rev_res), op_rules))
+        else:
+            lines.append(
+                f"  -> not every operator has a rule under "
+                f"[{_mode_tag(rev_ops, rev_res)}]; this orientation is rejected.")
 
-            ca_str, cb_str = cycled[0][0], cycled[0][1]
-            cta = ca_str[::-1] if rev_ops else ca_str
-            ctb = cb_str[::-1] if rev_ops else cb_str
-            candidates = cand_fn(int(cta), int(ctb), cta, ctb)
-            cand_idx = 0
-            for cand_name, _ in candidates:
-                rotated = [cycled[(cand_idx + j) % n_ex] for j in range(n_ex)]
-                cand_idx += 1
-                parts: list[str] = []
-                all_pass = True
-                for i, (ax, bx, exp_x) in enumerate(rotated):
-                    rax = ax[::-1] if rev_ops else ax
-                    rbx = bx[::-1] if rev_ops else bx
-                    raw = next(
-                        r for n, r in _all_candidates(int(rax), int(rbx), rax, rbx) if n == cand_name
-                    )
-                    expr_x = _expr(cand_name, rax, rbx)
-                    inter_x = _expr_intermediate(cand_name, rax, rbx)
-                    if expr_x and inter_x:
-                        detail_x = f" {expr_x} = {inter_x} ="
-                    elif expr_x:
-                        detail_x = f" {expr_x} ="
-                    else:
-                        detail_x = ""
-                    fin = _rev(raw) if rev_res else raw
-                    status = "match" if fin == exp_x else "wrong"
-                    if fin != exp_x:
-                        all_pass = False
-                    # Put the status next to the value it's comparing
-                    # (the header's advertised target = raw when rev_res,
-                    # fin when not). For matches, also show the post-rev
-                    # value as a side-channel confirming the example's
-                    # gold string; for wrongs, suppress the rev tail —
-                    # it would just be noise.
-                    if rev_res and status == "match":
-                        val = f"{raw} {status} -rev-> {fin}"
-                    elif rev_res:
-                        val = f"{raw} {status}"
-                    else:
-                        val = f"{fin} {status}"
-                    arrow = i > 0
-                    if arrow:
-                        parts.append(f"f({rax},{rbx}) ->{detail_x} {val}")
-                    else:
-                        parts.append(f"f({rax}, {rbx}) ={detail_x} {val}")
-                    if fin != exp_x:
-                        break
-                if all_pass:
-                    if found is not None:
-                        # Multiple rules fit the examples. We selection-
-                        # commit to the FIRST one found and keep listing
-                        # later matches for completeness, but they don't
-                        # change the result we apply to the query.
-                        parts.append(
-                            f"correct, but already committed to {found.op_name}"
-                            " (first rule that fit all examples) — keeping that choice"
-                        )
-                    else:
-                        summary: list[str] = []
-                        if rev_ops:
-                            summary.append("reversed operands")
-                        if rev_res:
-                            summary.append("reversed result")
-                        summary.append(cand_name)
-                        parts.append(
-                            "correct, this is the first rule that fits all "
-                            "examples — committing to it. actions: "
-                            + ", ".join(summary)
-                        )
-                lines.append(f"    {cand_name} " + ", ".join(parts))
-                if all_pass and found is None:
-                    found = FoundOp(
-                        op_name=cand_name,
-                        rev_ops=rev_ops,
-                        rev_res=rev_res,
-                        fmt=detected_fmts[q_op],
-                        op_char=q_op,
-                    )
-
-    if found is None:
+    if not consistent:
         return None
 
-    # Apply to query
+    chosen_mode, chosen_rules = consistent[0]
     lines.append("")
+    if len(consistent) > 1:
+        # Examples-only check (no gold): do the consistent orientations agree on
+        # the query answer? If yes the choice is harmless; if not, we fall back
+        # to the more common orientation (rev_both, tried first) as a stated
+        # convention — we do NOT use the gold answer to choose.
+        q_answers = {_apply_op_v2(r[q_op], qa, qb)[0] for _, r in consistent}
+        if len(q_answers) == 1:
+            lines.append(
+                "More than one orientation explains every operator, and they "
+                f"yield the same answer, so we use [{_mode_tag(*chosen_mode)}].")
+        else:
+            lines.append(
+                "More than one orientation explains every operator and the "
+                "examples do not distinguish them; by convention we use the more "
+                f"common orientation, [{_mode_tag(*chosen_mode)}].")
+    else:
+        lines.append(
+            f"Only [{_mode_tag(*chosen_mode)}] explains every operator, so the "
+            f"orientation is [{_mode_tag(*chosen_mode)}].")
+
+    found = chosen_rules[q_op]
+
+    # ---- Step 2: apply the query operator under the chosen orientation ----
+    lines.append("")
+    lines.append(
+        f"Step 2 - apply the query operator 【{q_op}】 = {found.op_name} under "
+        f"[{_mode_tag(*chosen_mode)}] (found in Step 1).")
     lines.append(f"Applying to {problem.question}:")
     result_val, steps = _apply_op_v2(found, qa, qb)
     for step in steps:
@@ -767,85 +754,116 @@ def _build_deduce_v2(
 
 # ---------------- v2 guess builder ----------------
 
-# R1: example-op signature → query rule (highest priority). Mined from
+# R1: (example-op signature, picked transform) → query rule. Mined from
 # the dataset by majority-vote across all guess problems sharing the same
-# sorted tuple of inferred example op rules. Only signatures with >=2
-# pids are kept; we use the simplest fitting rule by majority count.
+# (sorted rule tuple, picked transform) cell. Picked transform is computed
+# the same way the cascade does — majority across example ops, tiebreak
+# by _DEFAULT_TRANSFORM_ORDER. This split table lifts honest catches from
+# 63 to 82 on the 136 real eq_guess pids vs sig-only R1 (+19 gain).
 # Pids whose chosen rule doesn't produce gold under R1 fall through to
-# R2/R3/R4.
+# R2 (per-char), then R3 (default 'concat').
 _GUESS_R1 = {
-    ('absolute difference', 'addition'): 'multiply-1',
-    ('addition', 'multiply-1'): 'absolute difference',
-    ('addition', 'negated absolute difference'): 'concatenation',
-    ('multiplication', 'negated absolute difference'): 'addition',
-    ('absolute difference', 'multiplication'): 'add+1',
-    ('concatenation', 'multiplication'): 'subtraction (a-b)',
-    ('max mod min', 'multiplication'): 'addition',
-    ('multiplication',): 'addition',
-    ('addition',): 'multiplication',
-    ('addition', 'multiplication'): 'subtraction (a-b)',
-    ('addition', 'multiply+1'): 'subtraction (a-b)',
-    ('subtraction (a-b)',): 'concatenation',
-    ('absolute difference',): 'addition',
-    ('absolute difference', 'add-1'): 'multiplication',
-    ('addition', 'concatenation'): 'subtraction (a-b)',
-    ('concatenation', 'multiply+1'): 'subtraction (a-b)',
-    ('concatenation', 'negated absolute difference'): 'addition',
-    ('multiply+1', 'negated absolute difference'): 'addition',
-    ('negated absolute difference',): 'multiplication',
-    ('absolute difference', 'multiply-1'): 'addition',
-    ('absolute difference', 'reverse concatenation'): 'addition',
-    ('add+1', 'multiplication'): 'subtraction (a-b)',
-    ('add+1', 'negated absolute difference'): 'multiplication',
-    ('add+1', 'subtraction (a-b)'): 'concatenation',
-    ('add-1',): 'multiplication',
-    ('add-1', 'multiplication'): 'subtraction (a-b)',
-    ('concatenation', 'subtraction (a-b)'): 'concatenation',
-    ('max mod min',): 'multiplication',
-    ('multiplication', 'reverse concatenation'): 'absolute difference',
-    ('multiply+1',): 'subtraction (a-b)',
-    ('negated absolute difference', 'reverse concatenation'): 'addition',
+    (('absdiff',), 'rev_both'): 'add',
+    (('absdiff',), 'id'): 'add',
+    (('absdiff', 'add'), 'rev_both'): 'mul-1',
+    (('absdiff', 'add'), 'id'): 'mul-1',
+    (('absdiff', 'add-1'), 'rev_both'): 'mul',
+    (('absdiff', 'add-1'), 'id'): 'mul',
+    (('absdiff', 'concat'), 'rev_both'): 'mul',
+    (('absdiff', 'mul'), 'rev_both'): 'add+1',
+    (('absdiff', 'mul'), 'id'): 'add-1',
+    (('absdiff', 'mul-1'), 'rev_both'): 'add',
+    (('absdiff', 'rconcat'), 'rev_both'): 'add',
+    (('add',), 'rev_both'): 'mul-1',
+    (('add', 'concat'), 'rev_both'): 'max mod min',
+    (('add', 'max mod min'), 'rev_both'): 'mul+1',
+    (('add', 'mul'), 'rev_both'): 'absdiff',
+    (('add', 'mul+1'), 'id'): 'absdiff',
+    (('add', 'mul-1'), 'rev_both'): 'negabsdiff',  # re-mined 2026-06-03: 2/2 -> negabsdiff
+    (('add', 'mul-1'), 'id'): 'absdiff',
+    (('add', 'negabsdiff'), 'rev_both'): 'mul',
+    (('add', 'negabsdiff'), 'id'): 'concat',
+    (('add', 'sub'), 'rev_both'): 'mul-1',
+    (('add+1',), 'id'): 'absdiff',
+    (('add+1', 'max mod min'), 'id'): 'mul',
+    (('add+1', 'mul'), 'id'): 'max mod min',
+    (('add+1', 'negabsdiff'), 'rev_both'): 'mul+1',
+    (('add+1', 'negabsdiff'), 'id'): 'mul',
+    (('add+1', 'rsub'), 'rev_both'): 'mul',
+    (('add+1', 'sub'), 'rev_both'): 'concat',
+    (('add-1',), 'rev_both'): 'absdiff',
+    (('add-1',), 'id'): 'mul',
+    (('add-1', 'mul'), 'rev_both'): 'negabsdiff',  # re-mined 2026-06-03: 2/2 -> negabsdiff
+    (('add-1', 'max mod min'), 'id'): 'mul',
+    (('add-1', 'mul-1'), 'id'): 'absdiff',
+    (('add-1', 'sub'), 'rev_both'): 'mul-1',
+    (('concat',), 'rev_both'): 'add',
+    (('concat', 'mul'), 'rev_both'): 'absdiff',
+    (('concat', 'mul+1'), 'rev_both'): 'sub',  # re-mined 2026-06-03: 3/3 -> sub
+    (('concat', 'negabsdiff'), 'rev_both'): 'concat',
+    (('concat', 'sub'), 'rev_both'): 'concat',
+    # (('gcd', 'mul'), 'id'): 'add+1',  # dropped: narrator's guess pool excludes gcd, only 1 real pid
+    (('max mod min',), 'rev_both'): 'mul',
+    (('max mod min',), 'id'): 'concat',
+    (('max mod min', 'mul'), 'rev_both'): 'add',
+    (('max mod min', 'mul'), 'id'): 'concat',
+    (('max mod min', 'mul+1'), 'rev_both'): 'add',
+    (('mul',), 'rev_both'): 'max mod min',
+    (('mul', 'negabsdiff'), 'rev_both'): 'add',
+    (('mul', 'negabsdiff'), 'id'): 'concat',
+    (('mul', 'rconcat'), 'rev_both'): 'absdiff',
+    (('mul+1',), 'id'): 'absdiff',
+    (('mul+1', 'negabsdiff'), 'rev_both'): 'add',
+    (('mul+1', 'negabsdiff'), 'id'): 'add',
+    (('mul+1', 'sub'), 'rev_both'): 'add+1',
+    (('mul-1',), 'rev_both'): 'add+1',
+    (('mul-1', 'negabsdiff'), 'rev_both'): 'add',
+    (('mul-1', 'sub'), 'id'): 'concat',
+    (('negabsdiff',), 'rev_both'): 'mul',
+    (('negabsdiff',), 'id'): 'mul',
+    (('negabsdiff', 'rconcat'), 'rev_both'): 'add',
+    (('rconcat',), 'rev_both'): 'absdiff',
+    (('sub',), 'rev_both'): 'add+1',
+    (('sub',), 'id'): 'concat',
 }
 
-# R2: natural arithmetic chars — canonical real-world meaning.
+# R2: data-mined per-char rule for q_ops where R1 either has no signature
+# or R1's rule didn't fit gold. Mined from R1-miss residual on real data.
+# This is the same "+/-/*" channel as before but with data-derived rules
+# (not canonical). Catches ~11 of the 53 R1-miss real pids.
 _GUESS_R2 = {
-    '+': 'addition',
-    '-': 'subtraction (a-b)',
-    '*': 'multiplication',
+    '+': 'add-1',
+    '-': 'negabsdiff',
+    '*': 'concat',
 }
 
-# R3: per-char dataset conventions (strong/hardcoded mapping).
+# R3: per-char fallback after R2. Mined from R1+R2-miss residual.
 _GUESS_R3 = {
-    '@': 'addition',
-    ')': 'multiply-1',
-    '#': 'addition',
+    '#': 'add',
+    ')': 'add',
 }
 
-# R4: per-char majority for chars not in R2/R3. Mined ONLY over pids that
-# would actually reach R4 (i.e., pids whose example-op signature isn't in
-# _GUESS_R1, so R1 doesn't catch them). This gives the correct per-char
-# majority for the R4-eligible subset, rather than counting R1-covered
-# pids that R4 never sees. Chars where every pid is R1-covered are not
-# listed (R4 would never fire for them).
+# R4: per-char majority for residual after R1+R2+R3. Mined from real R1+R2+R3-miss.
+# Only chars with at least one real firing are kept.
 _GUESS_R4 = {
-    '!': 'multiplication',
-    '%': 'multiplication',
+    '!': 'digit add mod10',
+    '%': 'mul',
     '&': 'add-1',
-    '(': 'multiplication',
-    '/': 'multiplication',
-    ':': 'add+1',
-    '<': 'multiplication',
-    '?': 'concatenation',
-    '[': 'addition',
-    '\\': 'multiply+1',
-    '^': 'concatenation',
-    '`': 'multiplication',
-    '{': 'concatenation',
-    '|': 'addition',
-    '}': 'concatenation',
+    "'": 'add',
+    '(': 'mul',
+    '/': 'add',
+    ':': 'add',
+    '<': 'mul',
+    '[': 'mul',
+    '\\': 'mul+1',
+    '^': 'mul-1',
+    '|': 'add-1',
+    '}': 'concat',
 }
 
-# Backwards-compat aliases (some imports/tests may still use the old names).
+# R5: default fallback when nothing matches.
+_GUESS_R5_DEFAULT = 'concat'
+
 _GUESS_NATURAL = {k: [v] for k, v in _GUESS_R2.items()}
 _GUESS_PER_CHAR = {k: [v] for k, v in _GUESS_R3.items()}
 _GUESS_PER_CHAR_EXT = _GUESS_R4
@@ -914,28 +932,26 @@ def _pick_guess_rule(
 
     def _transform_label(rev_ops: bool, rev_res: bool) -> str:
         if not rev_ops and not rev_res:
-            return "identity (no reversal)"
+            return "id"
+        if rev_ops and rev_res:
+            return "rev_both"
         parts = []
-        if rev_ops: parts.append("reversed operands")
-        if rev_res: parts.append("reversed result")
-        return " + ".join(parts)
+        if rev_ops: parts.append("rev_ops")
+        if rev_res: parts.append("rev_res")
+        return "+".join(parts)
 
     def _transform_explanation(rev_ops: bool, rev_res: bool) -> str:
         label = _transform_label(rev_ops, rev_res)
         if len(seen) == 1:
-            return (
-                f"All example operators apply [{label}]. "
-                f"We follow the same convention for the unseen operator."
-            )
+            return f"All example ops use [{label}] — use same for unseen op."
         # Mixed transforms — pick majority across example ops.
         majority_count = transform_counts[(rev_ops, rev_res)]
         total = sum(transform_counts.values())
         others = sorted(seen - {(rev_ops, rev_res)})
         other_labels = ", ".join(f"[{_transform_label(o, r)}]" for o, r in others)
         return (
-            f"Example operators use multiple transforms (also: {other_labels}); "
-            f"[{label}] is the most common ({majority_count}/{total} example ops), "
-            f"so we apply it to the unseen operator."
+            f"Mixed transforms (also: {other_labels}); [{label}] is majority "
+            f"({majority_count}/{total}) — use for unseen op."
         )
 
     def _make(rule_name, rev_ops, rev_res, rule_reason):
@@ -945,58 +961,56 @@ def _pick_guess_rule(
         return FoundOp(op_name=rule_name, rev_ops=rev_ops, rev_res=rev_res,
                        fmt='num', op_char=q_op), full
 
-    # Determine which SINGLE rule fires based on preconditions only (NO
-    # fallthrough). Priority: R1 (sig) > R2 (qop=+/-/*) > R3 (qop=@/#/))
-    # > R4 (qop in R4 map) > R5 (default concat). The chosen rule's
-    # prediction must fit gold; otherwise the pid is dropped. This gives
-    # consistent training (same precondition always picks same rule).
+    # Honest cascade: pick the FIRST level that has a mapping. Don't peek at
+    # gold to decide between levels — that would leak supervision the model
+    # can't use at inference. Outer caller (reasoning_equation_numeric) drops
+    # the pid if the chosen rule's prediction doesn't match gold.
     ex_sig = tuple(sorted(r.op_name for r in example_op_results.values()))
-    r1_rule = _GUESS_R1.get(ex_sig)
-
-    chosen_rule = None
-    reasoning = None
-    if r1_rule is not None:
-        chosen_rule = r1_rule
-        ex_sig_str = ", ".join(ex_sig)
+    picked_xf_tag = _transform_label(*picked_transform)
+    r1_key = (ex_sig, picked_xf_tag)
+    if r1_key in _GUESS_R1:
+        chosen_rule = _GUESS_R1[r1_key]
         reasoning = (
-            f"R1 applies: the example operators' inferred rules are "
-            f"({ex_sig_str}); for this signature, the unseen operator "
-            f"follows the rule `{r1_rule}`."
+            f"R1 applies: signature ({', '.join(ex_sig)}) with picked transform "
+            f"[{picked_xf_tag}] maps to `{chosen_rule}`."
         )
     elif q_op in _GUESS_R2:
         chosen_rule = _GUESS_R2[q_op]
+        if isinstance(chosen_rule, list): chosen_rule = chosen_rule[0]
         reasoning = (
-            f"R2 applies: the character `{q_op}` is a standard arithmetic "
-            f"operator symbol; it represents `{chosen_rule}` in real-world "
-            f"arithmetic. Applying that interpretation."
+            f"R2 applies: (signature, transform) not in R1; "
+            f"`{q_op}` → `{chosen_rule}`."
         )
-    elif q_op in _GUESS_R3:
+    elif _PREAMBLE_VARIANT == "full" and q_op in _GUESS_R3:
         chosen_rule = _GUESS_R3[q_op]
+        if isinstance(chosen_rule, list): chosen_rule = chosen_rule[0]
         reasoning = (
-            f"R3 applies: the character `{q_op}` is not a standard "
-            f"arithmetic symbol, but the dataset convention is that "
-            f"`{q_op}` represents `{chosen_rule}`. Applying that convention."
+            f"R3 applies: `{q_op}` → `{chosen_rule}` (hardcoded dataset convention)."
         )
-    elif q_op in _GUESS_R4:
+    elif _PREAMBLE_VARIANT == "full" and q_op in _GUESS_R4:
         chosen_rule = _GUESS_R4[q_op]
+        if isinstance(chosen_rule, list): chosen_rule = chosen_rule[0]
         reasoning = (
-            f"R4 applies: across this dataset's guess problems, the "
-            f"query character `{q_op}` most commonly represents "
-            f"`{chosen_rule}`. Applying that convention."
+            f"R4 applies: `{q_op}` → `{chosen_rule}` (per-char majority)."
         )
     else:
-        chosen_rule = 'concatenation'
+        chosen_rule = _GUESS_R5_DEFAULT
+        tier = "R5" if _PREAMBLE_VARIANT == "full" else "R3"
         reasoning = (
-            f"R5 applies (default fallback): no specific rule maps `{q_op}` "
-            f"to a known operation; defaulting to `concatenation`."
+            f"{tier} applies (default): no prior tier matched; fall back to `{chosen_rule}`."
         )
 
+    # Pick the (rev_ops, rev_res) that lets the chosen rule produce gold under
+    # the example-op majority transform if possible — else the picked majority
+    # transform with no gold check. Outer wrapper will drop the pid on mismatch.
     for rule_name, rev_ops, rev_res in fitting:
         if rule_name == chosen_rule:
             return _make(rule_name, rev_ops, rev_res, reasoning)
 
-    # Chosen rule's prediction doesn't fit gold — drop.
-    return None
+    # Chosen rule's prediction won't match gold under the picked transform.
+    # Still commit to it under the picked transform — outer wrapper drops.
+    rev_ops, rev_res = picked_transform
+    return _make(chosen_rule, rev_ops, rev_res, reasoning)
 
 
 def _guess_common_candidates(a: int, b: int, sa: str, sb: str) -> list[tuple[str, str]]:
@@ -1007,49 +1021,44 @@ def _guess_common_candidates(a: int, b: int, sa: str, sb: str) -> list[tuple[str
     they tend to coincidentally fit examples in ways that confuse the
     pattern-match step."""
     out: list[tuple[str, str]] = []
-    out.append(("concatenation", sa + sb))
-    out.append(("reverse concatenation", sb + sa))
-    out.append(("addition", str(a + b)))
-    out.append(("absolute difference", str(abs(a - b))))
-    out.append(("negated absolute difference", str(-abs(a - b))))
-    out.append(("subtraction (a-b)", str(a - b)))
-    out.append(("reverse subtraction (b-a)", str(b - a)))
-    out.append(("multiplication", str(a * b)))
+    out.append(("concat", sa + sb))
+    out.append(("rconcat", sb + sa))
+    out.append(("add", str(a + b)))
+    out.append(("absdiff", str(abs(a - b))))
+    out.append(("negabsdiff", str(-abs(a - b))))
+    out.append(("sub", str(a - b)))
+    out.append(("rsub", str(b - a)))
+    out.append(("mul", str(a * b)))
     return out
 
 
 def _guess_rare_candidates(a: int, b: int, sa: str, sb: str) -> list[tuple[str, str]]:
-    """Reduced rare-op pool for guess. Keeps the offset variants and the
-    mod-family ops (R3 references the mod family). Drops gcd/lcm/digit/
-    cross/det ops which are never the right answer in our guess pool AND
-    confuse the search by coincidentally fitting examples."""
+    """Reduced rare-op pool for guess. Audit of the real data showed sub+1/
+    sub-1/mod/rmod are 0-1 uses each — dropped to shrink search trace.
+    Keeps mul±1/add±1 (offset variants used ~100 times each) and
+    `max mod min` (50 uses)."""
     out: list[tuple[str, str]] = []
-    out.append(("multiply+1", str(a * b + 1)))
-    out.append(("multiply-1", str(a * b - 1)))
+    out.append(("mul+1", str(a * b + 1)))
+    out.append(("mul-1", str(a * b - 1)))
     out.append(("add+1", str(a + b + 1)))
     out.append(("add-1", str(a + b - 1)))
-    out.append(("sub+1", str(a - b + 1)))
-    out.append(("sub-1", str(a - b - 1)))
     if a != 0 and b != 0:
         big, small = max(a, b), min(a, b)
         out.append(("max mod min", str(big % small)))
-    if b != 0:
-        out.append(("modulo (a mod b)", str(a % b)))
-    if a != 0:
-        out.append(("reverse modulo (b mod a)", str(b % a)))
     return out
 
 
 def _format_brief_rule(found: FoundOp) -> str:
     """Compact human-readable description of a FoundOp: rule + transform."""
-    parts = [found.op_name]
     if found.rev_ops and found.rev_res:
-        parts.append("under reversed operands + reversed result")
+        t = "rev_both"
     elif found.rev_ops:
-        parts.append("under reversed operands")
+        t = "rev_ops"
     elif found.rev_res:
-        parts.append("under reversed result")
-    return " ".join(parts)
+        t = "rev_res"
+    else:
+        t = "id"
+    return f"{found.op_name} [{t}]"
 
 
 def _emit_op_search(
@@ -1072,19 +1081,16 @@ def _emit_op_search(
     found: FoundOp | None = None
     for set_name, cand_fn in candidate_sets:
         for rev_ops, rev_res in transform_order:
-            label = f"{set_name} operations"
             if rev_ops:
                 rev_parts = ", ".join(f"({ax},{bx})->({ax[::-1]},{bx[::-1]})" for ax, bx, _ in cycled)
-                if rev_res:
-                    label += f" reversed operands [{rev_parts}] and reversed result"
-                else:
-                    label += f" reversed operands [{rev_parts}]"
+                tag = "rev_both" if rev_res else "rev_ops"
+                label = f"{set_name} ops [{tag}] [{rev_parts}]"
             elif rev_res:
                 id_parts = ", ".join(f"({ax},{bx})" for ax, bx, _ in cycled)
-                label += f" identity operands [{id_parts}] reversed result"
+                label = f"{set_name} ops [rev_res] [{id_parts}]"
             else:
                 id_parts = ", ".join(f"({ax},{bx})" for ax, bx, _ in cycled)
-                label += f" on identity [{id_parts}]"
+                label = f"{set_name} ops [id] [{id_parts}]"
             def _disp_target(exp: str) -> str:
                 return _rev(exp) if rev_res else exp
             if rev_ops:
@@ -1119,7 +1125,7 @@ def _emit_op_search(
                     else:
                         detail_x = ""
                     fin = _rev(raw) if rev_res else raw
-                    status = "match" if fin == exp_x else "wrong"
+                    status = "M" if fin == exp_x else "W"
                     if fin != exp_x:
                         all_pass = False
                     if rev_res and status == "match":
@@ -1137,8 +1143,7 @@ def _emit_op_search(
                 if all_pass:
                     if found is not None:
                         parts.append(
-                            f"correct, but already committed to {found.op_name}"
-                            " (first rule that fit all examples) — keeping that choice"
+                            f"correct, but {found.op_name} already chosen (first fit) — skip"
                         )
                     else:
                         summary: list[str] = []
@@ -1148,8 +1153,7 @@ def _emit_op_search(
                             summary.append("reversed result")
                         summary.append(cand_name)
                         parts.append(
-                            "correct, this is the first rule that fits all "
-                            "examples — committing to it. actions: "
+                            "MATCH (first fit) — commit. transform: "
                             + ", ".join(summary)
                         )
                 lines.append(f"    {cand_name} " + ", ".join(parts))
@@ -1165,21 +1169,52 @@ def _emit_op_search(
 
 
 def _format_r1_table() -> str:
-    """Render _GUESS_R1 (example-op signature → rule) as a sorted table."""
+    """Render _GUESS_R1 ((sig, xf) → rule) as a sorted table, grouping by
+    signature with [xf]=rule pairs inline for compactness."""
+    by_sig: dict[tuple, dict[str, str]] = {}
+    for (sig, xf), rule in _GUESS_R1.items():
+        by_sig.setdefault(sig, {})[xf] = rule
     rows = []
-    for sig, rule in sorted(_GUESS_R1.items(), key=lambda kv: (len(kv[0]), kv[0])):
+    for sig in sorted(by_sig.keys(), key=lambda s: (len(s), s)):
         sig_str = ", ".join(sig)
-        rows.append(f"        ({sig_str}) → {rule}")
+        xf_map = by_sig[sig]
+        xf_parts = ", ".join(f"[{xf}]={r}" for xf, r in sorted(xf_map.items()))
+        rows.append(f"        ({sig_str}) {xf_parts}")
     return "\n".join(rows)
 
 
-def _format_r4_table() -> str:
-    parts = [f"`{c}` → {r}" for c, r in sorted(_GUESS_R4.items())]
+def _format_r1_table_no_xf() -> str:
+    """OLD-style render: `(sig) → rule` per signature. Used when every xf-tag
+    for a sig maps to the same rule (OLD rulesets had no transform split)."""
+    by_sig: dict[tuple, set] = {}
+    for (sig, xf), rule in _GUESS_R1.items():
+        by_sig.setdefault(sig, set()).add(rule)
+    rows = []
+    for sig in sorted(by_sig.keys(), key=lambda s: (len(s), s)):
+        sig_str = ", ".join(sig)
+        rules = by_sig[sig]
+        if len(rules) == 1:
+            rows.append(f"        ({sig_str}) → {next(iter(rules))}")
+        else:
+            # Fallback to xf-breakdown if rules differ per xf
+            pairs = {}
+            for (s, xf), r in _GUESS_R1.items():
+                if s == sig:
+                    pairs[xf] = r
+            xf_parts = ", ".join(f"[{xf}]={r}" for xf, r in sorted(pairs.items()))
+            rows.append(f"        ({sig_str}) {xf_parts}")
+    return "\n".join(rows)
+
+
+def _format_char_table(d, cols=5) -> str:
+    """Render a {char: rule} mapping as comma-separated `c` → r columns."""
+    parts = [f"`{c}` → {r if not isinstance(r, list) else r[0]}"
+             for c, r in sorted(d.items())]
     out = []
     line = []
     for p in parts:
         line.append(p)
-        if len(line) >= 5:
+        if len(line) >= cols:
             out.append("        " + ", ".join(line))
             line = []
     if line:
@@ -1187,33 +1222,165 @@ def _format_r4_table() -> str:
     return "\n".join(out)
 
 
-_GUESS_RULESET_BLOCK = (
-    "When the query operator is not present in the examples, we apply the "
-    "following rules in priority order:\n"
-    "  R1. Look at the inferred rules for the example operators (sorted as\n"
-    "      a tuple) and apply the corresponding rule for the unseen op:\n"
-    f"{_format_r1_table()}\n"
-    "  R2. If R1 doesn't apply (signature not in the table, or its rule\n"
-    "      doesn't fit), use the canonical arithmetic meaning of the\n"
-    "      character:\n"
-    "        `+` → addition\n"
-    "        `-` → subtraction (a-b)\n"
-    "        `*` → multiplication\n"
-    "  R3. Otherwise, apply hardcoded dataset convention for known chars:\n"
-    "        `@` → addition\n"
-    "        `#` → addition\n"
-    "        `)` → multiply-1\n"
-    "  R4. Otherwise, apply per-char majority convention for the remaining\n"
-    "      chars seen in the dataset:\n"
-    f"{_format_r4_table()}\n"
-    "  R5. Default fallback for any other symbol: `concatenation`.\n"
-    "\n"
-    "Transform: each example operator runs under some (rev_ops, rev_res)\n"
-    "transform (identity / reversed operands / reversed result / both). We\n"
-    "apply the SAME transform to the unseen operator — when all example ops\n"
-    "agree on a transform, we use it; when they don't, we pick the one used\n"
-    "by the majority of example ops (tiebreak: identity-first)."
-)
+def _format_r4_table() -> str:
+    return _format_char_table(_GUESS_R4)
+
+
+# Preamble display style. "compact" (NEW default): R1 table + R2 +/-/* + R3
+# default = concat (R3/R4 dicts hidden from the preamble; still applied
+# internally). "full" (OLD style): explicit R1-R5 with R3/R4 dicts displayed.
+_PREAMBLE_VARIANT = "compact"
+
+
+def _build_ruleset_block_compact() -> str:
+    """NEW-style 3-tier preamble (R3/R4 dicts hidden)."""
+    parts = [
+        "When the query op is not in the examples, apply in priority:",
+        "  R1. Match (example-ops signature, picked transform) to this table:",
+        _format_r1_table(),
+        "  R2. If (signature, transform) not in R1, per-char fallback for `+`/`-`/`*`:",
+        _format_char_table(_GUESS_R2),
+        "  R3. Default fallback for any other char: `concat`.",
+        "",
+        "Transform: each example op uses one of [id, rev_ops, rev_res, rev_both]. "
+        "Picked transform for unseen op = majority across example ops; tiebreak id-first.",
+    ]
+    return "\n".join(parts)
+
+
+def _build_ruleset_block_full() -> str:
+    """OLD-style 5-tier preamble (R3 hardcoded chars + R4 per-char majority + R5 default)."""
+    parts = [
+        "When the query op is not in the examples, apply in priority:",
+        "  R1. Look at the inferred rules for the example operators (sorted as a tuple) "
+        "and apply the corresponding rule for the unseen op:",
+        _format_r1_table_no_xf(),
+        "  R2. If R1 doesn't apply, per-char fallback for `+`/`-`/`*`:",
+        _format_char_table(_GUESS_R2),
+        "  R3. Otherwise, apply hardcoded dataset convention for known chars:",
+        _format_char_table(_GUESS_R3),
+        "  R4. Otherwise, apply per-char majority convention for the remaining chars:",
+        _format_r4_table(),
+        "  R5. Default fallback for any other symbol: `concat`.",
+        "",
+        "Transform: each example operator runs under some (rev_ops, rev_res) "
+        "transform (identity / reversed operands / reversed result / both). We "
+        "apply the SAME transform to the unseen operator — when all example ops "
+        "agree on a transform, we use it; when they don't, we pick the one used "
+        "by the majority of example ops (tiebreak: identity-first).",
+    ]
+    return "\n".join(parts)
+
+
+def _build_ruleset_block() -> str:
+    if _PREAMBLE_VARIANT == "full":
+        return _build_ruleset_block_full()
+    return _build_ruleset_block_compact()
+
+
+_GUESS_RULESET_BLOCK = _build_ruleset_block()
+
+
+def _build_ruleset_block_exact_2mode() -> str:
+    """Compact 3-tier exact-op preamble restricted to id/rev_both modes
+    (EQ_GUESS_TABLE=exact). R1 exact-op signature table -> R2 +/-/* -> R3 concat."""
+    by_sig: dict[tuple, dict] = {}
+    for (sig, xf), rule in _GUESS_R1.items():
+        if xf in ("id", "rev_both"):
+            by_sig.setdefault(sig, {})[xf] = rule
+    rows = []
+    for sig in sorted(by_sig.keys(), key=lambda s: (len(s), s)):
+        xf_parts = ", ".join(f"[{xf}]={r}" for xf, r in sorted(by_sig[sig].items()))
+        rows.append(f"        ({', '.join(sig)}) {xf_parts}")
+    parts = [
+        "When the query op is not in the examples, apply in priority:",
+        "  R1. Match (example-ops signature, picked transform) to this table:",
+        "\n".join(rows),
+        "  R2. If (signature, transform) not in R1, per-char fallback for `+`/`-`/`*`:",
+        _format_char_table(_GUESS_R2),
+        "  R3. Default fallback for any other char: `concat`.",
+        "",
+        "Transform: each example op uses one of [id, rev_both]. Picked transform "
+        "for the unseen op = majority across example ops; tiebreak id-first.",
+    ]
+    return "\n".join(parts)
+
+
+_GUESS_RULESET_BLOCK_EXACT = _build_ruleset_block_exact_2mode()
+
+
+# ---------------- guess v2: family-signature cascade ----------------
+# The unseen query op is guessed from (orientation, FAMILIES of the example-op
+# rules). Families collapse the random ±1 variants (mul/mul±1 -> MUL, etc.),
+# which is what makes the table generalize (LOO 61 vs the old per-signature
+# table's 35). Cascade: R1 family table -> R2 canonical +/-/* -> R3 concat.
+# (audit: _eq_guess_best2.py / _mine_fam_table.py)
+_GUESS_FAM = {
+    "add": "ADD", "add+1": "ADD", "add-1": "ADD", "sub": "SUB",
+    "mul": "MUL", "mul+1": "MUL", "mul-1": "MUL",
+    "absdiff": "ABS", "negabsdiff": "ABS", "concat": "CON",
+    "max mod min": "MMM", "rsub": "RSUB",
+}
+_GUESS_CANON = {"+": "add", "-": "sub", "*": "mul"}
+# Re-mined 2026-06-05 under the current narrator (rconcat in the candidate pool +
+# rev_both-first orientation), so the table key matches what Step-1 now computes.
+# In-sample R1-cell accuracy 74 -> 85 of 135; full guess coverage 82 -> 85 of 136.
+_GUESS_FAM_R1 = {
+    ('id', ('ABS',)): 'add',
+    ('id', ('ABS', 'ADD')): 'mul+1',
+    ('id', ('ABS', 'CON')): 'mul',
+    ('id', ('ABS', 'MUL')): 'add-1',
+    ('id', ('ADD',)): 'mul',
+    ('id', ('ADD', 'CON')): 'sub',
+    ('id', ('ADD', 'MMM')): 'mul',
+    ('id', ('ADD', 'MUL')): 'sub',
+    ('id', ('ADD', 'SUB')): 'mul',
+    ('id', ('CON', 'MUL')): 'sub',
+    ('id', ('MMM',)): 'concat',
+    ('id', ('MMM', 'MUL')): 'add-1',
+    ('id', ('MUL',)): 'add-1',
+    ('id', ('MUL', 'SUB')): 'add+1',
+    ('id', ('SUB',)): 'concat',
+    ('rev_both', ('ABS',)): 'add',
+    ('rev_both', ('ABS', 'ADD')): 'mul',
+    ('rev_both', ('ABS', 'CON')): 'add',
+    ('rev_both', ('ABS', 'MUL')): 'add+1',
+    ('rev_both', ('ABS', 'rconcat')): 'add',
+    ('rev_both', ('ADD',)): 'absdiff',
+    ('rev_both', ('ADD', 'CON')): 'max mod min',
+    ('rev_both', ('ADD', 'MMM')): 'mul+1',
+    ('rev_both', ('ADD', 'MUL')): 'sub',
+    ('rev_both', ('ADD', 'RSUB')): 'mul',
+    ('rev_both', ('ADD', 'SUB')): 'mul-1',
+    ('rev_both', ('CON',)): 'add',
+    ('rev_both', ('CON', 'MUL')): 'sub',
+    ('rev_both', ('CON', 'SUB')): 'concat',
+    ('rev_both', ('MMM',)): 'mul',
+    ('rev_both', ('MMM', 'MUL')): 'add',
+    ('rev_both', ('MUL',)): 'max mod min',
+    ('rev_both', ('MUL', 'SUB')): 'add',
+    ('rev_both', ('MUL', 'rconcat')): 'absdiff',
+    ('rev_both', ('SUB',)): 'add',
+    ('rev_both', ('SUB', 'rconcat')): 'mul',
+    ('rev_both', ('rconcat',)): 'sub',
+}
+
+
+def _format_fam_ruleset() -> str:
+    out = [
+        "When the query operator is NOT in the examples, guess its rule in priority:",
+        "  R1. From the orientation and the FAMILIES of the example-operator rules",
+        "      (ADD={add,add±1}, MUL={mul,mul±1}, ABS={absdiff,negabsdiff}, SUB,",
+        "       CON=concat, MMM=max mod min, RSUB), look up the unseen operator:",
+    ]
+    for (mode, fsig), op in sorted(_GUESS_FAM_R1.items()):
+        out.append(f"        [{mode}] ({', '.join(fsig)}) -> {op}")
+    out.append("  R2. Else use the canonical meaning of the symbol: + -> add, - -> sub, * -> mul.")
+    out.append("  R3. Else default to concat.")
+    return "\n".join(out)
+
+
+_GUESS_FAM_RULESET_BLOCK = _format_fam_ruleset()
 
 
 def _build_guess_v2(
@@ -1281,62 +1448,122 @@ def _build_guess_v2(
     op_list = sorted(by_op.keys())
     lines.append(f"The example operators are: {', '.join(op_list)}.")
     lines.append(
-        f"The query operator 【{q_op}】 is NOT in the examples. We need to "
-        f"infer its rule from the patterns we see in the example operators."
+        f"The query operator 【{q_op}】 is NOT one of them — it does not appear in "
+        f"the examples, so we cannot read its rule off directly; we must infer it.")
+    lines.append("")
+    lines.extend(_sigil_check_summary(op_list, detected_fmts, by_op, transformed_groups))
+    lines.append("")
+    lines.append(
+        f"We first pin the orientation from the example operators, then guess the "
+        f"unseen operator 【{q_op}】's rule."
     )
-    lines.append("")
-    lines.append(_GUESS_RULESET_BLOCK)
 
-    # Per-example-op: trace search using the SHORTER guess-pool (only ops
-    # that appear in our guessing rules — drops digit/det/cross ops that
-    # would coincidentally fit examples and confuse the pattern match).
-    guess_candidate_sets = [
-        ("common", _guess_common_candidates),
-        ("rare", _guess_rare_candidates),
+    # ---- Step 1: pin the orientation from the example operators ----
+    lines.append("")
+    lines.append(
+        "Step 1 - find the orientation. The whole problem uses one orientation, so "
+        "the correct one gives every example operator a consistent rule. Check both.")
+    # rev_both first (more common orientation), consistent with deduce. The R1
+    # family table is re-mined under this same orientation order.
+    orient_specs = [
+        ((True, True), "reversed operands and reversed result"),
+        ((False, False), "identity (operands and result unchanged)"),
     ]
-    example_op_results: dict[str, FoundOp] = {}
-    for op_char in op_list:
-        group = transformed_groups[op_char]
-        sig_lines = _sigil_reasoning_block(op_char, detected_fmts[op_char], by_op[op_char], group)
-        if sig_lines:
-            lines.append("")
-            lines.extend(sig_lines)
-        examples_str = ", ".join(f"{a}{op_char}{b} = {out}" for a, b, out in group)
+    consistent: list[tuple[tuple[bool, bool], dict[str, FoundOp]]] = []
+    for (rev_ops, rev_res), desc in orient_specs:
         lines.append("")
-        lines.append(f"Looking at operator 【{op_char}】 [{examples_str}]:")
-        found_op = _emit_op_search(
-            lines, op_char, group, detected_fmts[op_char], preferred_mode,
-            candidate_sets=guess_candidate_sets,
-        )
-        if found_op is None:
-            return None
-        example_op_results[op_char] = found_op
-
-    # Brief recap of the rules we found per example op — useful as a bridge
-    # into the pattern-match step (so the reader doesn't have to scroll back
-    # through the per-op search to remember what each rule was).
-    lines.append("")
-    lines.append("Summary of inferred rules for the example operators:")
-    for op_char in op_list:
-        f = example_op_results[op_char]
-        sig_note = ""
-        if detected_fmts[op_char] != "num":
-            sig_note = f" (sigil format: {detected_fmts[op_char]})"
-        lines.append(f"  【{op_char}】: {_format_brief_rule(f)}{sig_note}")
-
-    # Pick the query op rule (must produce gold or we return None).
-    picked = _pick_guess_rule(q_op, qa, qb, gold, example_op_results)
-    if picked is None:
+        lines.append(f"Orientation [{_mode_tag(rev_ops, rev_res)}] - {desc}:")
+        op_rules: dict[str, FoundOp] = {}
+        for op_char in op_list:
+            fo = _emit_operator_search(
+                lines, op_char, transformed_groups[op_char],
+                detected_fmts[op_char], rev_ops, rev_res)
+            if fo is None:
+                lines.append(
+                    f"  -> 【{op_char}】 has no consistent rule under "
+                    f"[{_mode_tag(rev_ops, rev_res)}].")
+            else:
+                op_rules[op_char] = fo
+        if len(op_rules) == len(op_list):
+            lines.append(
+                f"  -> every example operator has a rule under "
+                f"[{_mode_tag(rev_ops, rev_res)}]; this orientation is consistent.")
+            consistent.append(((rev_ops, rev_res), op_rules))
+        else:
+            lines.append(
+                f"  -> not every operator has a rule under "
+                f"[{_mode_tag(rev_ops, rev_res)}]; this orientation is rejected.")
+    if not consistent:
         return None
-    chosen_found_op, reasoning_text = picked
-
+    chosen_mode, chosen_rules = consistent[0]
+    mtag = _mode_tag(*chosen_mode)
     lines.append("")
-    lines.append(f"Applying the guessing rules to 【{q_op}】:")
-    lines.append(f"  {reasoning_text}")
+    if len(consistent) > 1:
+        lines.append(
+            f"More than one orientation explains the example operators; we use [{mtag}].")
+    else:
+        lines.append(
+            f"Only [{mtag}] explains every example operator, so the orientation is [{mtag}].")
 
+    # ---- Step 2: guess the unseen query operator ----
+    if os.environ.get("EQ_GUESS_TABLE", "family") == "exact":
+        # exact-operator 3-tier cascade: R1 (signature, transform) -> R2 +/-/* -> R3 concat
+        ex_sig = tuple(sorted(fo.op_name for fo in chosen_rules.values()))
+        lines.append("")
+        lines.append(f"Step 2 - guess the rule for the unseen operator 【{q_op}】.")
+        resolved_note = ", ".join(
+            f"【{oc}】={chosen_rules[oc].op_name}" for oc in op_list)
+        lines.append(f"  Example operators resolve to: {resolved_note}.")
+        lines.append(f"  Signature (sorted): ({', '.join(ex_sig)}).")
+        lines.append("")
+        lines.append(_GUESS_RULESET_BLOCK_EXACT)
+        lines.append("")
+        if (ex_sig, mtag) in _GUESS_R1:
+            guess_op = _GUESS_R1[(ex_sig, mtag)]
+            lines.append(
+                f"  R1 fires: ({', '.join(ex_sig)}) [{mtag}] -> {guess_op}. "
+                f"So 【{q_op}】 = {guess_op}.")
+        elif q_op in _GUESS_R2:
+            guess_op = _GUESS_R2[q_op]
+            if isinstance(guess_op, list):
+                guess_op = guess_op[0]
+            lines.append(
+                f"  No R1 entry for ({', '.join(ex_sig)}) [{mtag}]. R2: 【{q_op}】 -> {guess_op}.")
+        else:
+            guess_op = "concat"
+            lines.append(f"  No R1 or R2 match. R3 default: 【{q_op}】 = concat.")
+    else:
+        # ---- family-signature cascade (default) ----
+        fams = tuple(sorted({_GUESS_FAM.get(fo.op_name, fo.op_name) for fo in chosen_rules.values()}))
+        lines.append("")
+        lines.append(f"Step 2 - guess the rule for the unseen operator 【{q_op}】.")
+        resolved_note = ", ".join(
+            f"【{oc}】={chosen_rules[oc].op_name} "
+            f"[{_GUESS_FAM.get(chosen_rules[oc].op_name, chosen_rules[oc].op_name)}]"
+            for oc in op_list)
+        lines.append(f"  Example operators resolve to: {resolved_note}.")
+        lines.append(f"  Their families (sorted): ({', '.join(fams)}).")
+        lines.append("")
+        lines.append(_GUESS_FAM_RULESET_BLOCK)
+        lines.append("")
+        if (mtag, fams) in _GUESS_FAM_R1:
+            guess_op = _GUESS_FAM_R1[(mtag, fams)]
+            lines.append(
+                f"  R1 fires: [{mtag}] ({', '.join(fams)}) -> {guess_op}. So 【{q_op}】 = {guess_op}.")
+        elif q_op in _GUESS_CANON:
+            guess_op = _GUESS_CANON[q_op]
+            lines.append(
+                f"  No R1 entry for this signature. R2: 【{q_op}】 is a canonical arithmetic "
+                f"symbol -> {guess_op}.")
+        else:
+            guess_op = "concat"
+            lines.append(f"  No R1 or R2 match. R3 default: 【{q_op}】 = concat.")
+
+    found = FoundOp(op_name=guess_op, rev_ops=chosen_mode[0], rev_res=chosen_mode[1],
+                    fmt="num", op_char=q_op)
     lines.append("")
     lines.append(f"Applying to {problem.question}:")
-    result_val, steps = _apply_op_v2(chosen_found_op, qa, qb)
+    result_val, steps = _apply_op_v2(found, qa, qb)
     for step in steps:
         lines.append(f"  {step}")
     lines.append(f"  Result: {result_val}")
@@ -1404,359 +1631,7 @@ def _reasoning_equation_numeric_impl(
         ``_common_candidates`` / ``_rare_candidates``.
     """
     if problem.category == "equation_numeric_deduce":
-        v2 = _build_deduce_v2(problem, preferred_mode, query_op_override)
-        if v2 is not None:
-            return v2
-    elif problem.category == "equation_numeric_guess":
+        return _build_deduce_v2(problem, preferred_mode, query_op_override)
+    if problem.category == "equation_numeric_guess":
         return _build_guess_v2(problem, preferred_mode, query_op_override)
-
-    lines: list[str] = []
-    lines.append("We need to infer the transformation rule from the examples.")
-    lines.append("I will put my final answer inside \\boxed{}.")
-    lines.append("")
-    lines.append("Examples:")
-
-    parsed: list[tuple[str, str, str, str]] = []
-    for ex in problem.examples:
-        m = _EXPR_RE.fullmatch(str(ex.input_value))
-        if not m:
-            continue
-        a, op, b = m.group(1), m.group(2), m.group(3)
-        parsed.append((a, op, b, str(ex.output_value)))
-        lines.append(f"  {ex.input_value} = {ex.output_value}")
-
-    by_op: dict[str, list[tuple[str, str, str]]] = defaultdict(list)
-    for a, op, b, out in parsed:
-        by_op[op].append((a, b, out))
-
-    # Precompute prefix/suffix format and transformed groups per operator
-    detected_fmts: dict[str, str] = {}
-    transformed_groups: dict[str, list[tuple[str, str, str]]] = {}
-    has_symbol_suffix = False
-    has_symbol_prefix = False
-    symbol_suffix_char = ""
-    symbol_prefix_char = ""
-
-    for op_char, group in by_op.items():
-        any_neg_suffixed = op_char != "-" and any(
-            out.endswith("-") and len(out) > 1 for _, _, out in group
-        )
-        any_neg_prefixed = op_char != "-" and any(
-            out.startswith("-") and len(out) > 1 for _, _, out in group
-        )
-        any_suffixed = any(
-            out.endswith(op_char) and len(out) > 1 for _, _, out in group
-        )
-        any_prefixed = any(
-            out.startswith(op_char) and len(out) > 1 for _, _, out in group
-        )
-
-        fmt = "num"
-        transformed = list(group)
-        if any_neg_suffixed:
-            fmt = "neg_suffix"
-            transformed = [
-                (a, b, "-" + out[:-1] if out.endswith("-") and len(out) > 1 else out)
-                for a, b, out in group
-            ]
-        elif any_neg_prefixed:
-            fmt = "neg_prefix"
-        elif any_suffixed:
-            fmt = "neg_suffix"
-            has_symbol_suffix = True
-            symbol_suffix_char = op_char
-            transformed = [
-                (
-                    a,
-                    b,
-                    "-" + out[: -len(op_char)]
-                    if out.endswith(op_char) and len(out) > 1
-                    else out,
-                )
-                for a, b, out in group
-            ]
-        elif any_prefixed:
-            fmt = "neg_prefix"
-            has_symbol_prefix = True
-            symbol_prefix_char = op_char
-            transformed = [
-                (
-                    a,
-                    b,
-                    "-" + out[len(op_char) :]
-                    if out.startswith(op_char) and len(out) > 1
-                    else out,
-                )
-                for a, b, out in group
-            ]
-
-        detected_fmts[op_char] = fmt
-        transformed_groups[op_char] = transformed
-
-    # Build map from (a, op, b) to transformed output
-    transformed_map: dict[tuple[str, str, str], str] = {}
-    for oc, tgroup in transformed_groups.items():
-        for a, b, tout in tgroup:
-            transformed_map[(a, oc, b)] = tout
-
-    # Check inputs for leading zeros
-    all_inputs: list[str] = []
-    for a, _, b, _ in parsed:
-        all_inputs.append(a)
-        all_inputs.append(b)
-    lines.append("")
-    lines.append(f"The inputs are {', '.join(all_inputs)}")
-
-    # Report outputs
-    all_outputs = [out for _, _, _, out in parsed]
-    lines.append("")
-    lines.append(f"The outputs are {', '.join(all_outputs)}")
-    if has_symbol_suffix:
-        lines.append(
-            f"Some outputs have the operator symbol as suffix 【{symbol_suffix_char}】."
-        )
-    if has_symbol_prefix:
-        lines.append(
-            f"Some outputs have the operator symbol as prefix 【{symbol_prefix_char}】."
-        )
-    if not has_symbol_suffix and not has_symbol_prefix:
-        lines.append("No outputs have a symbol prefix or suffix.")
-
-    # Show transformed outputs if any transformation occurred
-    any_transformed = any(fmt != "num" for fmt in detected_fmts.values())
-    if any_transformed:
-        t_all = [transformed_map.get((a, op, b), out) for a, op, b, out in parsed]
-        lines.append(f"We now consider the outputs to be {', '.join(t_all)}")
-        if has_symbol_suffix:
-            lines.append(
-                "We will add back the operator suffix if our answer is negative."
-            )
-        elif has_symbol_prefix:
-            lines.append(
-                "We will add back the operator prefix if our answer is negative."
-            )
-
-    lines.append("")
-
-    # Show input → operator parsing
-    lines.append("Looking at the input of the examples")
-    for a, op, b, out in parsed:
-        lines.append(f"{a}{op}{b} -> {op}")
-    op_names = list(by_op.keys())
-    lines.append("")
-    lines.append("The operators")
-    for op in op_names:
-        lines.append(op)
-
-    q_match = _EXPR_RE.fullmatch(str(problem.question))
-    q_op = q_match.group(2) if q_match else None
-
-    lines.append("")
-    lines.append("Looking at the question")
-    if q_match:
-        lines.append(f"{problem.question} -> {q_op}")
-
-    # If question operator not in examples, fall back to most common example operator
-    effective_q_op = q_op
-    if q_op is not None and q_op not in by_op and by_op:
-        most_common_op = max(by_op, key=lambda op: len(by_op[op]))
-        lines.append(
-            f"The question operator is not found in the examples. "
-            f"Investigating the most common example operator 【{most_common_op}】 instead. "
-            f"We will use absolute difference for the question operator."
-        )
-        effective_q_op = most_common_op
-    elif q_op is not None and q_op in by_op:
-        lines.append("The question operator is found in the examples.")
-
-    found_ops: dict[str, FoundOp] = {}
-
-    # Analyze each operator (focus on question operator)
-    for op_char, group in sorted(by_op.items()):
-        if effective_q_op is not None and op_char != effective_q_op and len(by_op) > 1:
-            continue
-
-        # Use precomputed format and transformed group
-        detected_fmt = detected_fmts[op_char]
-        group = transformed_groups[op_char]
-
-        examples_str = ", ".join(f"{a}{op_char}{b} = {out}" for a, b, out in group)
-        lines.append("")
-        lines.append(f"Looking at operator 【{op_char}】 [{examples_str}]:")
-
-        a_str, b_str, expected = group[0]
-
-        # Try common operations first (all 4 combos), then rare operations
-        found = None
-
-        candidate_sets = [
-            ("common", _common_candidates),
-            ("rare", _rare_candidates),
-        ]
-
-        n_ex = len(group)
-        transform_order = _resolve_transform_order(preferred_mode)
-        for set_name, cand_fn in candidate_sets:
-            for rev_ops, rev_res in transform_order:
-                # Use fixed example order for paragraph header
-                cycled = list(group)
-
-                # Describe what we're trying
-                label = f"{set_name} operations"
-                if rev_ops:
-                    rev_parts = ", ".join(
-                        f"{ax}->{ax[::-1]} {bx}->{bx[::-1]}" for ax, bx, _ in cycled
-                    )
-                    if rev_res:
-                        label += f" reversed operands [{rev_parts}] and reversed result"
-                    else:
-                        label += f" reversed operands [{rev_parts}]"
-                elif rev_res:
-                    id_parts = ", ".join(f"{ax} {bx}" for ax, bx, _ in cycled)
-                    label += f" identity operands [{id_parts}] reversed result"
-                else:
-                    id_parts = ", ".join(f"{ax} {bx}" for ax, bx, _ in cycled)
-                    label += f" on identity [{id_parts}]"
-                if rev_ops:
-                    all_expected = ", ".join(
-                        f"({ax[::-1]},{bx[::-1]})->{exp}" for ax, bx, exp in cycled
-                    )
-                else:
-                    all_expected = ", ".join(
-                        f"({ax},{bx})->{exp}" for ax, bx, exp in cycled
-                    )
-                lines.append(f"  Trying {label} [expected {all_expected}]:")
-
-                def _fmt_result(
-                    raw: str, a: str, b: str, detail: str, arrow: bool
-                ) -> str:
-                    fin = _rev(raw) if rev_res else raw
-                    val = f"{raw} -rev-> {fin}" if rev_res else fin
-                    if arrow:
-                        return f"f({a},{b}) ->{detail} {val}"
-                    return f"f({a}, {b}) ={detail} {val}"
-
-                # Use first example for candidate generation
-                ca_str, cb_str = cycled[0][0], cycled[0][1]
-                cta = ca_str[::-1] if rev_ops else ca_str
-                ctb = cb_str[::-1] if rev_ops else cb_str
-                candidates = cand_fn(int(cta), int(ctb), cta, ctb)
-                cand_idx = 0
-                for cand_name, cand_res in candidates:
-                    # Rotate which example is tried first within the paragraph
-                    rotated = [cycled[(cand_idx + j) % n_ex] for j in range(n_ex)]
-                    cand_idx += 1
-
-                    parts = []
-                    all_pass = True
-
-                    for i, (ax, bx, exp_x) in enumerate(rotated):
-                        rax = ax[::-1] if rev_ops else ax
-                        rbx = bx[::-1] if rev_ops else bx
-                        raw = next(
-                            r
-                            for n, r in _all_candidates(int(rax), int(rbx), rax, rbx)
-                            if n == cand_name
-                        )
-                        expr_x = _expr(cand_name, rax, rbx)
-                        inter_x = _expr_intermediate(cand_name, rax, rbx)
-                        if expr_x and inter_x:
-                            detail_x = f" {expr_x} = {inter_x} ="
-                        elif expr_x:
-                            detail_x = f" {expr_x} ="
-                        else:
-                            detail_x = ""
-                        fin = _rev(raw) if rev_res else raw
-                        status = "match" if fin == exp_x else "wrong"
-                        if fin != exp_x:
-                            all_pass = False
-                        parts.append(
-                            _fmt_result(raw, rax, rbx, detail_x, arrow=i > 0)
-                            + f" {status}"
-                        )
-                        if fin != exp_x:
-                            break
-
-                    if all_pass:
-                        if found:
-                            parts.append("correct, but skipping")
-                        else:
-                            summary = []
-                            if rev_ops:
-                                summary.append("reversed operands")
-                            if rev_res:
-                                summary.append("reversed result")
-                            summary.append(cand_name)
-                            parts.append("correct, actions: " + ", ".join(summary))
-                    lines.append(f"    {cand_name} " + ", ".join(parts))
-
-                    if not all_pass:
-                        continue
-
-                    if not found:
-                        found = FoundOp(
-                            op_name=cand_name,
-                            rev_ops=rev_ops,
-                            rev_res=rev_res,
-                            fmt=detected_fmt,
-                            op_char=op_char,
-                        )
-
-        if found:
-            found_ops[op_char] = found
-        else:
-            if op_char == effective_q_op:
-                return None
-            lines.append("  No matching operation found.")
-
-    # Apply to question
-    if not q_match or effective_q_op not in found_ops:
-        return None
-
-    qa, qb = q_match.group(1), q_match.group(3)
-    lines.append("")
-    lines.append(f"Applying to {problem.question}:")
-    if effective_q_op != q_op:
-        if query_op_override is not None:
-            ov_op_name, ov_rev_ops, ov_rev_res = query_op_override
-            lines.append(
-                "  We recall that the question operator is not found in the examples. "
-                f"We will use {ov_op_name} as the operator for the question."
-            )
-            override_op = FoundOp(
-                op_name=ov_op_name,
-                rev_ops=ov_rev_ops,
-                rev_res=ov_rev_res,
-                fmt=found_ops[effective_q_op].fmt,
-                op_char=q_op or "",
-            )
-            result_val, steps = _apply_op(override_op, qa, qb)
-        else:
-            lines.append(
-                "  We recall that the question operator is not found in the examples. "
-                "We will use the absolute difference as the operator."
-            )
-            abs_diff_op = FoundOp(
-                op_name="absolute difference",
-                rev_ops=False,
-                rev_res=False,
-                fmt=found_ops[effective_q_op].fmt,
-                op_char=q_op or "",
-            )
-            result_val, steps = _apply_op(abs_diff_op, qa, qb)
-    else:
-        result_val, steps = _apply_op(found_ops[effective_q_op], qa, qb)
-    for step in steps:
-        lines.append(f"  {step}")
-    lines.append(f"  Result: 【{result_val}】")
-
-    lines.append("")
-    lines.append("I will now return the answer in \\boxed{}")
-    lines.append(f"The answer in \\boxed{{–}} is \\boxed{{{result_val}}}")
-
-    # Gold filter: legacy path doesn't constrain on gold; only emit the
-    # CoT when the boxed answer matches gold. Otherwise return None so
-    # the caller can drop the problem from training.
-    if str(result_val) != str(problem.answer):
-        return None
-    return "\n".join(lines)
+    return None
