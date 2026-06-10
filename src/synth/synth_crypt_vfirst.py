@@ -203,6 +203,10 @@ def worker(i):
     return bucket_of(tail, est), prob
 
 
+def _init_worker():
+    sys.path.insert(0, "src")
+
+
 def main():
     import multiprocessing as mp
     out_path = sys.argv[1] if len(sys.argv) > 1 else "synth_crypt_vfirst.jsonl"
@@ -210,7 +214,7 @@ def main():
     seen = set()
     idx = 0
     BATCH = 400
-    with mp.Pool(10, initializer=lambda: sys.path.insert(0, "src")) as pool:
+    with mp.Pool(10, initializer=_init_worker) as pool:
         while any(len(filled[k]) < QUOTAS[k] for k in QUOTAS) and idx < 60000:
             batch = list(range(idx, idx + BATCH))
             idx += BATCH
