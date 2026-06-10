@@ -1,37 +1,32 @@
-"""Reasoning generator for 8-bit bit-manipulation tasks.
+"""Production bit_manipulation narrator (audit 2026-06-10).
 
-The output follows the legacy trace style used by the existing reasoning files,
-with a strict-validity filter for candidate assignment vectors.
+Provenance: zyx narrator (stride-select -> whole-word agreement -> reselect)
++ four audit patches: (a) render-gate rendering ladder (verified +29/0 breaks:
+when per_bit_ops cannot express the agreed whole-word answer per-bit, narrate
+the witness program directly instead of reverting to the wrong stride answer);
+(b) PORT's eval-driven asym-apply NOT-split; (c) transparent Reselect
+narration (transform class + agreed program); (d) class-relative unanimity
+comment. One fixed procedure, answer-blind (decoy-gold byte-identical
+1602/1602); the external gold keep/drop filter remains MANDATORY (the narrator
+never abstains; solver unanimity is class-relative).
+Solver lives in reasoners.bitword_solver. Replaces reasoners.bit_manipulation
+(PORT) for production builds; expected real coverage 1454/1602 (90.8%).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from itertools import combinations
 from typing import Dict, List, Literal, Optional, Sequence, Tuple
 
 from reasoners.store_types import Problem
 
 N_BITS = 8
 
-# Toggle the 3-input middle-fill (majority/choice + op-composition). True -> the
-# 88.5% IN-SAMPLE narrator — a known OVERFIT (only 2/60 triples forced; audit
-# 2026-06-10): keep False. Default flipped True->False so an import site that
-# forgets to set it gets the production behavior (flip verified byte-identical
-# for every current consumer). The '885' experiment config sets True explicitly.
-# NOTE: this PORT narrator is superseded by reasoners.bit_manipulation_zyx in
-# production builds (strict superset, 1454 vs 1364); kept for reference/885.
-INCLUDE_3INPUT = False
-
 SYM_FAMILIES = ("XOR", "OR", "AND")
 ASYM_FAMILIES = ("AND-NOT", "XOR-NOT", "OR-NOT")
 PAIR_FAMILIES = SYM_FAMILIES + ASYM_FAMILIES
 UNARY_FAMILIES = ("I", "NOT")
 CONSTANT_FAMILIES = ("0", "1")
-# 3-input primitives (the prompt names majority/choice). Only ever tried as a
-# middle-fill fallback for a pending bit, on the stride-derived candidate
-# positions -- never enumerated globally.
-TRIPLE_FAMILIES = ("MAJ", "CH")
 DEFAULT_FAMILY: RuleFamily = "DEFAULT"
 SECTION_ORDER = (
     "Identity",
@@ -70,9 +65,6 @@ RuleFamily = Literal[
     "AND-NOT",
     "XOR-NOT",
     "OR-NOT",
-    "MAJ",
-    "CH",
-    "COMP",
     "DEFAULT",
 ]
 
@@ -91,10 +83,6 @@ class RuleCandidate:
     secondary_offset: Optional[int] = (
         None  # secondary at bit 0: secondary = (offset + bit * stride) % 8
     )
-    tertiary: Optional[int] = None  # 3rd operand for MAJ/CH (CH: primary=selector,
-    #                                 secondary=then, tertiary=else)
-    inner_family: Optional[str] = None  # COMP: out = outer_family(inner_family(primary,
-    outer_family: Optional[str] = None  #   secondary), tertiary)  -- 2-op composition
 
     @property
     def is_default(self) -> bool:
@@ -153,77 +141,6 @@ def _apply_family(
     for x, y in zip(a_bits, b_eff):
         out.append(_evaluate_binary(x, y, family))
     return "".join(out)
-
-
-def _eval_triple(a: str, b: str, c: str, family: str) -> str:
-    """MAJ = majority(a,b,c); CH = a?b:c (a is selector, b=then, c=else)."""
-    if family == "MAJ":
-        return "1" if (int(a) + int(b) + int(c)) >= 2 else "0"
-    # CH
-    return b if a == "1" else c
-
-
-def _triple_consistent(
-    input_columns: Sequence[str], out_col: str, positions: Sequence[int]
-) -> List[RuleCandidate]:
-    """All majority/choice rules over a triple of the candidate positions whose
-    column reproduces out_col, in canonical order (positions ascending, MAJ before
-    CH, selector ascending). Bounded: <=56 triples."""
-    pos = sorted(set(p for p in positions if p is not None))
-    out: List[RuleCandidate] = []
-    for a, b, c in combinations(pos, 3):
-        ca, cb, cc = input_columns[a], input_columns[b], input_columns[c]
-        if all(_eval_triple(x, y, z, "MAJ") == o for x, y, z, o in zip(ca, cb, cc, out_col)):
-            out.append(RuleCandidate("MAJ", a, b, f"MAJ{a}{b}{c}", tertiary=c))
-        for sel in (a, b, c):
-            rest = [p for p in (a, b, c) if p != sel]
-            for x, y in (rest, rest[::-1]):
-                cs, cx, cy = input_columns[sel], input_columns[x], input_columns[y]
-                if all(_eval_triple(s, xx, yy, "CH") == o for s, xx, yy, o in zip(cs, cx, cy, out_col)):
-                    out.append(RuleCandidate("CH", sel, x, f"CH{sel}{x}{y}", tertiary=y))
-    return out
-
-
-def _find_triple_forced(
-    input_columns: Sequence[str], out_col: str, positions: Sequence[int], question_bits: str
-) -> Optional[RuleCandidate]:
-    """Return the canonical majority/choice rule ONLY if every triple consistent
-    with the examples agrees on the query bit (uniquely determined). Otherwise the
-    bit is genuinely ambiguous -> return None and leave it to the default, so we
-    never guess a consistent-but-wrong rule."""
-    cands = _triple_consistent(input_columns, out_col, positions)
-    if not cands:
-        return None
-    if len({_evaluate_rule(question_bits, c) for c in cands}) == 1:
-        return cands[0]
-    return None
-
-
-def _op_val(op: str, x: str, y: str) -> str:
-    """Apply a (possibly -NOT) binary op to two bit values."""
-    yy = _bit_not(y) if op.endswith("-NOT") else y
-    return _evaluate_binary(x, yy, op)
-
-
-def _comp_from_run(run: "List[RuleCandidate]", run_start: int, bit: int,
-                   input_columns: Sequence[str], out_col: str) -> Optional[RuleCandidate]:
-    """Op-composition fill: the run is the INNER pair (T1 op1 T2) read off where the
-    3rd transform shifts out. Extrapolate it to this bit, then exhaustively test the
-    OUTER op + 3rd operand: (inner) op2 in[c], 6 ops x 8 positions = 48 bounded tests.
-    Returns the first consistent ((T1 op1 T2) op2 T3) rule."""
-    if not run or run[0].family not in PAIR_FAMILIES:
-        return None
-    r = run[0]
-    a = (r.primary - run_start + bit) % N_BITS
-    b = (r.secondary - run_start + bit) % N_BITS
-    op1 = r.family
-    inner = [_op_val(op1, input_columns[a][e], input_columns[b][e]) for e in range(len(out_col))]
-    for op2 in PAIR_FAMILIES:
-        for c in range(N_BITS):
-            if all(_op_val(op2, inner[e], input_columns[c][e]) == out_col[e] for e in range(len(out_col))):
-                return RuleCandidate("COMP", a, b, f"({op1}{a}{b}){op2}{c}",
-                                     tertiary=c, inner_family=op1, outer_family=op2)
-    return None
 
 
 def _find_match(
@@ -418,13 +335,6 @@ def _evaluate_rule(bits: str, rule: RuleCandidate) -> str:
         if "-NOT" in rule.family:
             b = _bit_not(b)
         return _evaluate_binary(a, b, rule.family)
-    if rule.family in TRIPLE_FAMILIES:
-        assert rule.primary is not None and rule.secondary is not None and rule.tertiary is not None
-        return _eval_triple(bits[rule.primary], bits[rule.secondary], bits[rule.tertiary], rule.family)
-    if rule.family == "COMP":
-        assert rule.inner_family is not None and rule.outer_family is not None
-        inner = _op_val(rule.inner_family, bits[rule.primary], bits[rule.secondary])
-        return _op_val(rule.outer_family, inner, bits[rule.tertiary])
     raise ValueError(f"Unknown family {rule.family}")
 
 
@@ -459,31 +369,6 @@ def _emit_apply(
             nval = _bit_not(val)
             lines.append(f"{i} {rule.expr} = NOT({val}) = {nval}")
             answer_bits.append(nval)
-            continue
-        if rule.family in TRIPLE_FAMILIES:
-            assert rule.primary is not None and rule.secondary is not None and rule.tertiary is not None
-            va = question_bits[rule.primary]
-            vb = question_bits[rule.secondary]
-            vc = question_bits[rule.tertiary]
-            result = _evaluate_rule(question_bits, rule)
-            if rule.family == "MAJ":
-                lines.append(f"{i} {rule.expr} = MAJ({va},{vb},{vc}) = {result}")
-            else:
-                lines.append(f"{i} {rule.expr} = ({va}?{vb}:{vc}) = {result}")
-            answer_bits.append(result)
-            continue
-        if rule.family == "COMP":
-            va = question_bits[rule.primary]
-            vb = question_bits[rule.secondary]
-            vc = question_bits[rule.tertiary]
-            inner = _op_val(rule.inner_family, va, vb)
-            result = _op_val(rule.outer_family, inner, vc)
-            ib = rule.inner_family.split("-")[0]
-            ob = rule.outer_family.split("-")[0]
-            vbn = _bit_not(vb) if rule.inner_family.endswith("-NOT") else vb
-            vcn = _bit_not(vc) if rule.outer_family.endswith("-NOT") else vc
-            lines.append(f"{i} {rule.expr} = {ob}({ib}({va},{vbn})={inner}, {vcn}) = {result}")
-            answer_bits.append(result)
             continue
 
         assert rule.primary is not None and rule.secondary is not None
@@ -1117,62 +1002,116 @@ def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
             lines.append(f"{i} {best[i].expr}")
     lines.append("")
 
-    # 3-input fill (the +3.4pp): a still-default bit may be majority/choice or an
-    # op-composition of THREE transforms; its component positions are revealed by the
-    # stride runs. Toggle with INCLUDE_3INPUT (off -> baseline 85.1%; on -> 88.5%).
-    # The found rule is stated (the bounded <=56-test search is not narrated -- this
-    # is the one small assert pocket in an otherwise fully-mechanical narrator).
-    if INCLUDE_3INPUT:
-        def _chain_positions_at(chain: List[RuleCandidate], run_start_bit: int, bit: int, acc: set) -> None:
-            if not chain:
-                return
-            r = chain[0]
-            if r.primary is not None:
-                acc.add(((r.primary - run_start_bit) % N_BITS + bit) % N_BITS)
-            if r.secondary is not None:
-                acc.add(((r.secondary - run_start_bit) % N_BITS + bit) % N_BITS)
-
-        def _candidate_positions(bit: int) -> List[int]:
-            acc: set = set()
-            for name in SECTION_ORDER:
-                pm = all_matches[name]
-                lr = _find_all_left_runs(pm)
-                if lr:
-                    _chain_positions_at(max(lr, key=lambda t: len(t[0]))[0], 0, bit, acc)
-                rr = _find_all_right_runs(pm)
-                if rr:
-                    ch = max(rr, key=lambda t: len(t[0]))[0]
-                    _chain_positions_at(ch, N_BITS - len(ch), bit, acc)
-            return sorted(acc)
-
-        inner_runs = [(left_run, 0), (right_run, right_start_final)]
-        still_default = [i for i in pending_indices if best[i].is_default]
-        triple_lines: list[str] = []
-        for i in still_default:
-            cand = None
-            for run, start in inner_runs:
-                cand = _comp_from_run(run, start, i, input_columns, output_columns[i])
-                if cand is not None:
-                    break
-            if cand is None:
-                cands = _triple_consistent(input_columns, output_columns[i], _candidate_positions(i))
-                if not cands:
-                    cands = _triple_consistent(input_columns, output_columns[i], list(range(N_BITS)))
-                cand = cands[0] if cands else None
-            if cand is not None:
-                best[i] = cand
-                triple_lines.append(f"{i} {cand.expr}")
-            else:
-                triple_lines.append(f"{i} none")
-        if any(not tl.endswith("none") for tl in triple_lines):
-            lines.append("Triple (composition / majority / choice)")
-            for tl in triple_lines:
-                lines.append(tl)
-            lines.append("")
-
     # Check if we have any non-default rules
     if all(r.is_default for r in best):
         return None
+
+    # Whole-word coverage extension: the stride-based selection can pick a rule
+    # that fits the examples yet is wrong on the query (a spurious example-fit).
+    # The whole-word solver (ROT/SHL/SHR, up to 3 transforms, example-only) returns
+    # an answer only under global agreement WITHIN ITS CLASS. That unanimity is
+    # class-relative, not truth-guaranteed: 3/1602 real pids have a spuriously
+    # unique wrong program (audit 2026-06-10); the external gold keep/drop filter
+    # is what drops them. If the agreed answer disagrees with the stride
+    # selection, we re-render so Selected/Applying are correct and self-consistent.
+    def _reproduces_examples(rule_vec: List[RuleCandidate]) -> bool:
+        for inp, out in zip(inputs, outputs):
+            got = "".join(_evaluate_rule(inp, r) for r in rule_vec)
+            if got != out:
+                return False
+        return True
+
+    best_answer = "".join(_evaluate_rule(question_bits, r) for r in best)
+    from reasoners.bitword_solver import (
+        per_bit_ops,
+        solve as _ww_solve,
+        solve_program,
+        eval_program,
+        program_name,
+        term_name,
+    )
+
+    ex_pairs = list(zip(inputs, outputs))
+    ww_answer = _ww_solve(ex_pairs, question_bits)
+    if ww_answer is not None and ww_answer != best_answer:
+        # witness program for transparent narration only (decision stays with
+        # _ww_solve; solve_program mirrors its enumeration order exactly)
+        _ww2, ww_prog = solve_program(ex_pairs, question_bits)
+        if _ww2 != ww_answer:
+            ww_prog = None
+        pb = per_bit_ops(ex_pairs, question_bits, ww_answer)
+        if pb is not None:
+
+            def _mk(fam: str, p, q) -> RuleCandidate:
+                if fam == "I":
+                    return RuleCandidate("I", p, None, f"I{p}")
+                if fam == "NOT":
+                    return RuleCandidate("NOT", p, None, f"NOT{p}")
+                if fam == "0":
+                    return RuleCandidate("0", None, None, "C0")
+                if fam == "1":
+                    return RuleCandidate("1", None, None, "C1")
+                return RuleCandidate(fam, p, q, f"{fam}{p}{q}")
+
+            ww_best = [_mk(fam, p, q) for (fam, p, q) in pb]
+            if _reproduces_examples(ww_best):
+                best = ww_best
+                lines.append("")
+                lines.append("Reselect (whole-word coverage)")
+                lines.append(
+                    "Cross-check with whole-word programs of up to 3 ROT/SHL/SHR "
+                    "terms (each optionally negated) combined with AND/OR/XOR: "
+                    "every example-consistent program agrees on the question and "
+                    "disagrees with the stride selection above, so we reselect "
+                    "per-bit rules consistent with the examples and the agreed "
+                    "answer."
+                )
+                if ww_prog is not None:
+                    lines.append(f"Agreed program: {program_name(ww_prog)} -> {ww_answer}")
+                for i, rule in enumerate(best):
+                    lines.append(f"{i} {rule.expr}")
+        else:
+            # Rendering rung 2: the agreed whole-word answer has no per-bit
+            # <=2-input expression. Narrate the word-level program directly
+            # (same fixed procedure, one extra rendering rung).
+            ww2, prog = solve_program(ex_pairs, question_bits)
+            if ww2 == ww_answer and prog is not None:
+                lines.append("")
+                lines.append("Reselect (whole-word program)")
+                lines.append(
+                    "Per-bit rules cannot express the column behaviour; "
+                    "searching whole-word programs of up to 3 ROT/SHL/SHR "
+                    "terms (each optionally negated) combined with AND/OR/XOR."
+                )
+                lines.append(f"Found {program_name(prog)}")
+                terms = prog[0::2]
+                lines.append("Check on examples")
+                ok_all = True
+                for inp, out in ex_pairs:
+                    words, res = eval_program(inp, prog)
+                    parts = " ".join(
+                        f"{term_name(t)}={w}" for t, w in zip(terms, words)
+                    )
+                    flag = "yes" if res == out else "no"
+                    lines.append(f"{inp} {parts} -> {res} vs {out} {flag}")
+                    if res != out:
+                        ok_all = False
+                if ok_all:
+                    lines.append(
+                        "All example-consistent programs agree on the question."
+                    )
+                    lines.append("")
+                    lines.append(f"Applying to {question_bits}")
+                    words, res = eval_program(question_bits, prog)
+                    for t, w in zip(terms, words):
+                        lines.append(f"{term_name(t)} = {w}")
+                    lines.append(f"Combined = {res}")
+                    lines.append("")
+                    lines.append("I will now return the answer in \\boxed{}")
+                    lines.append(
+                        f"The answer in \\boxed{{–}} is \\boxed{{{res}}}"
+                    )
+                    return "\n".join(lines)
 
     lines.append("Selected")
     for i, rule in enumerate(best):
