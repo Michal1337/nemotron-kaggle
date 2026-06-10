@@ -17,7 +17,6 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from reasoners.equation_numeric import (
     _build_guess_v2,
-    _pick_guess_rule,
     _GUESS_R1,
     _GUESS_R2,
     _GUESS_R3,
@@ -59,100 +58,9 @@ def load_problem(pid):
     )
 
 
-# ---------------- Unit: _pick_guess_rule heuristic priority ----------------
-
-def _fake_ex_results(ops_to_rules):
-    return {op: FoundOp(op_name=rule, rev_ops=False, rev_res=False, fmt="num", op_char=op)
-            for op, rule in ops_to_rules.items()}
-
-
-class TestPickGuessRule:
-    def test_returns_none_when_no_rule_produces_gold(self):
-        # Bogus gold that no op produces from (5, 3). Use ex_ops with sig
-        # NOT in R3 so we exercise the no-fitting-rule path properly.
-        out = _pick_guess_rule(
-            "@", "5", "3", "99999",
-            _fake_ex_results({"a": "reverse subtraction (b-a)"}),
-        )
-        assert out is None
-
-    def test_r1_exact_op_sig_lookup(self):
-        # ex_ops have signature ('addition', 'multiplication') → R1 = 'subtraction (a-b)'.
-        # qop = '?' (non-canonical), 5-3 = 2.
-        out = _pick_guess_rule(
-            "?", "5", "3", "2",
-            _fake_ex_results({"a": "addition", "b": "multiplication"}),
-        )
-        assert out is not None
-        fop, reason = out
-        assert fop.op_name == "subtraction (a-b)"
-        assert "R1" in reason
-
-    def test_r2_natural_arithmetic_plus(self):
-        # 5+3 = 8 (addition). qop = '+', canonical = addition.
-        # Use ex_op with sig NOT in R1 so R2 wins cleanly.
-        out = _pick_guess_rule(
-            "+", "5", "3", "8",
-            _fake_ex_results({"a": "reverse subtraction (b-a)"}),
-        )
-        assert out is not None
-        fop, reason = out
-        assert fop.op_name == "addition"
-        assert "R2" in reason and "standard arithmetic" in reason
-
-    def test_r2_natural_arithmetic_minus_signed(self):
-        # 5-9 = -4 (subtraction). qop = '-', canonical = subtraction.
-        out = _pick_guess_rule(
-            "-", "5", "9", "-4",
-            _fake_ex_results({"a": "reverse subtraction (b-a)"}),
-        )
-        assert out is not None
-        fop, _ = out
-        assert fop.op_name == "subtraction (a-b)"
-
-    def test_r3_per_char_at_means_addition(self):
-        # qop = '@', dataset convention = addition. Use ex_op with sig NOT in R1.
-        out = _pick_guess_rule(
-            "@", "5", "3", "8",
-            _fake_ex_results({"a": "reverse subtraction (b-a)"}),
-        )
-        assert out is not None
-        fop, reason = out
-        assert fop.op_name == "addition"
-        assert "R3" in reason and "dataset convention" in reason
-
-    def test_r1_drops_when_rule_doesnt_fit_no_fallthrough(self):
-        # qop = '+'. ex_ops sig ('subtraction (a-b)',) → R1 = 'concatenation'.
-        # gold = 8 = 5+3 = addition. R1 says concat (53) — doesn't fit gold.
-        # NO fallthrough: pid is dropped even though R2 would have caught it.
-        # This guarantees training consistency (same sig always picks R1).
-        out = _pick_guess_rule(
-            "+", "5", "3", "8",
-            _fake_ex_results({"a": "subtraction (a-b)"}),
-        )
-        assert out is None
-
-    def test_no_rule_when_nothing_applies(self):
-        # qop is a rare char with no per-char rule. ex_ops sig NOT in R1.
-        # gold = 15. Even though multiplication fits, no rule's prediction
-        # matches → drop.
-        out = _pick_guess_rule(
-            "~", "5", "3", "15",
-            _fake_ex_results({"a": "reverse subtraction (b-a)"}),
-        )
-        assert out is None
-
-    def test_r4_per_char_majority(self):
-        # qop = '/' which has R4 = multiplication. 5*3 = 15. ex_ops sig
-        # NOT in R1 so R4 gets to fire.
-        out = _pick_guess_rule(
-            "/", "5", "3", "15",
-            _fake_ex_results({"a": "reverse subtraction (b-a)"}),
-        )
-        assert out is not None
-        fop, reason = out
-        assert fop.op_name == "multiplication"
-        assert "R4" in reason
+# _pick_guess_rule tests deleted (audit 2026-06-10): the function was
+# gold-conditioned rule selection (mid-CoT selection leak) and was removed
+# from the narrator along with its helpers.
 
 
 # ---------------- Format invariants on the produced CoT ----------------
