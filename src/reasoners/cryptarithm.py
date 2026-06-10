@@ -72,13 +72,18 @@ def reasoning_cryptarithm(problem: Problem) -> str | None:
         if ct is not None:
             concat_types[op] = ct
 
-    # Check question operator for concatenation type (default to fwd if unknown)
+    # Audit 2026-06-11 (root cause of the crypt_deduce ~1%): this narrator used
+    # to DEFAULT TO 'fwd' concatenation when the query operator's examples were
+    # not concatenation - a confident wrong CoT for every ARITHMETIC deduce
+    # problem, all silently deleted by the external gold filter, so arithmetic
+    # never reached training. ABSTAIN instead; the arithmetic path belongs to
+    # reasoners.crypt_vfirst (which has its own concat gate).
     if q_op in by_op:
         q_ct = _concat_type(by_op[q_op])
         if q_ct is None:
-            q_ct = "fwd"
+            return None
     else:
-        q_ct = "fwd"
+        return None
 
     if q_ct == "fwd":
         answer = q_a[0] + q_a[1] + q_b[0] + q_b[1]

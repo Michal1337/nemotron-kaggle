@@ -11,12 +11,18 @@ import json, sys, time
 from collections import defaultdict, Counter
 from itertools import product
 
+import math
+
 ADD_FAM = {"add": 0, "add_p1": 1, "add_m1": -1}
 MUL_FAM = {"mul": 0, "mul_p1": 1, "mul_m1": -1}
 SUB_FAM = {"sub_signed", "rsub_signed", "absdiff", "neg_absdiff"}
+# extended pool (audit build step 4): no column structure, so these get no
+# units/tens propagation - they are resolved purely by P5 full-example
+# expansion checks (check_example_full -> op_value).
+EXTRA_OPS = ("mod", "rmod", "gcd")
 CONCAT = {"concat_fwd": (0, 1, 3, 4), "concat_rev": (3, 4, 0, 1),
           "concat_fwd_ro": (1, 0, 4, 3), "concat_rev_ro": (4, 3, 1, 0)}
-POOL = list(ADD_FAM) + list(MUL_FAM) + sorted(SUB_FAM) + list(CONCAT)
+POOL = list(ADD_FAM) + list(MUL_FAM) + sorted(SUB_FAM) + list(EXTRA_OPS) + list(CONCAT)
 
 def op_value(op, L, R):
     if op in ADD_FAM: return L + R + ADD_FAM[op]
@@ -25,6 +31,9 @@ def op_value(op, L, R):
     if op == "rsub_signed": return R - L
     if op == "absdiff": return abs(L - R)
     if op == "neg_absdiff": return -abs(L - R)
+    if op == "mod": return L % R if R else None
+    if op == "rmod": return R % L if L else None
+    if op == "gcd": return math.gcd(L, R)
     return None
 
 def rev2(x): return (x % 10) * 10 + x // 10
@@ -68,6 +77,9 @@ def stage1_char(opchar, exlist, opchars):
             if op in ("mul", "mul_p1") and rl not in (3, 4): ok = False; break
             if op == "mul_m1" and rl not in (2, 3, 4): ok = False; break
             if op in ("sub_signed", "rsub_signed", "absdiff") and rl not in (1, 2):
+                ok = False; break
+            if op in EXTRA_OPS and rl not in (1, 2):
+                # mod/rmod < divisor <= 99; gcd <= min operand <= 99
                 ok = False; break
         if ok: cands.append(op)
     return cands
@@ -255,6 +267,10 @@ def example_units_tens(inp, out, op, mode, domains, evars, steps, forced=None):
         if not forced:
             if op in ("absdiff", "neg_absdiff"): evars["dir"] = sup_dirs
             evars["c1"] = agg_b1 if agg_b1 else b1s
+    elif op in EXTRA_OPS:
+        # no exploitable single-column structure; resolved by full-example
+        # expansion in P5. No narrowing here (sound no-op).
+        return ch
     elif op in MUL_FAM:
         d = MUL_FAM[op]
         # units anchor: (a0*b0 + d) mod 10 == units digit

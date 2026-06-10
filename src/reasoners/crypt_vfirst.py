@@ -48,6 +48,7 @@ OP_LETTERS = "pqr"
 OP_PRIOR = {"add": 0.0, "mul": 0.0, "absdiff": 1.0,
             "add_p1": 1.5, "add_m1": 1.5, "mul_p1": 1.5, "mul_m1": 1.5,
             "sub_signed": 2.0, "rsub_signed": 3.0, "neg_absdiff": 3.0,
+            "mod": 3.5, "rmod": 3.8, "gcd": 3.8,
             "concat_fwd": 0.5, "concat_rev": 1.0,
             "concat_fwd_ro": 2.5, "concat_rev_ro": 3.0}
 
@@ -56,6 +57,7 @@ OP_SHOW = {"add": "x+y", "add_p1": "x+y+1", "add_m1": "x+y-1",
            "sub_signed": "x-y (sign-prefixed when negative)",
            "rsub_signed": "y-x (sign-prefixed when negative)",
            "absdiff": "|x-y|", "neg_absdiff": "-|x-y| (sign-prefixed)",
+           "mod": "x mod y", "rmod": "y mod x", "gcd": "gcd(x,y)",
            "concat_fwd": "concat x then y", "concat_rev": "concat y then x",
            "concat_fwd_ro": "concat, operands reversed",
            "concat_rev_ro": "concat reversed, operands reversed"}
@@ -70,6 +72,20 @@ def combo_prior(ops, mode):
 def _dset(d):
     """Domain set -> compact digit-run string, e.g. {0,2,3} -> '023'."""
     return "".join(str(x) for x in sorted(d))
+
+
+def _opsym(op):
+    if op in S.MUL_FAM:
+        return '*'
+    if op in S.ADD_FAM:
+        return '+'
+    if op == 'mod':
+        return ' mod '
+    if op == 'rmod':
+        return ' rmod '
+    if op == 'gcd':
+        return ' gcd '
+    return '-'
 
 
 def _combo_name(ops, mode, chars):
@@ -238,7 +254,7 @@ class Narrator:
         narrowed = sorted(((s, d) for s, d in t.items() if len(d) < 10),
                           key=lambda kv: (len(kv[1]), kv[0]))[:4]
         sets = " ".join(f"{s}:{_dset(d)}" for s, d in narrowed)
-        self.em.emit(f"{lab} {c}:{op}.{mtag}.e{k+1} units {A[1]}{'*' if op in S.MUL_FAM else '+' if op in S.ADD_FAM else '-'}{B[1]} ends {nat[-1]}: {sets}")
+        self.em.emit(f"{lab} {c}:{op}.{mtag}.e{k+1} units {A[1]}{_opsym(op)}{B[1]} ends {nat[-1]}: {sets}")
         return lab
 
     # -------- P0
@@ -290,15 +306,27 @@ class Narrator:
         em = self.em
         em.emit()
         em.emit("Op filter (2-digit operands; result length/sign must fit every example):")
+        common = [op for op in S.POOL if op not in S.EXTRA_OPS]
         for c in sorted(by_char):
             exl = [(inp, out) for _, inp, out in by_char[c]]
             keep, kills = [], []
-            for op in S.POOL:
+            for op in common:
                 verdict = self._stage1_verdict(op, exl, c)
                 if verdict is None:
                     keep.append(op)
                 else:
                     kills.append((op, verdict))
+            rare_note = False
+            if not keep:
+                # fixed second tier: rare ops considered only when no common
+                # op fits this char (same common->rare pattern as eq_num)
+                rare_note = True
+                for op in S.EXTRA_OPS:
+                    verdict = self._stage1_verdict(op, exl, c)
+                    if verdict is None:
+                        keep.append(op)
+                    else:
+                        kills.append((op, verdict))
             if not keep:
                 em.emit(f"  [{c}] no candidate operation fits - outside the pool.")
                 raise Abort
@@ -307,6 +335,8 @@ class Narrator:
                 bygrp[why].append(op)
             for why, opl in bygrp.items():
                 em.emit(f"  [{c}] kill {' '.join(opl)}: {why}")
+            if rare_note:
+                em.emit(f"  [{c}] no common op fits - extend with the rare ops mod/rmod/gcd")
             em.emit(f"  [{c}] keep: {', '.join(keep)}")
             cands[c] = keep
         return cands
@@ -336,6 +366,10 @@ class Narrator:
                 return f"{rl}-digit result; mul-1 gives 2-4 digits"
             if op in ("sub_signed", "rsub_signed", "absdiff") and rl not in (1, 2):
                 return f"{rl}-digit result; a difference of 2-digit numbers has 1-2 digits"
+            if op in S.EXTRA_OPS and rl not in (1, 2):
+                return f"{rl}-digit result; mod/gcd of 2-digit numbers has 1-2 digits"
+            if op in S.EXTRA_OPS and sign:
+                return f"sign-prefixed result but {op} is never negative"
         return None
 
     # -------- P3+P4
@@ -483,7 +517,7 @@ class Narrator:
             tup_s = "".join(f"{s}{d}" for s, d in zip(unknowns, tup))
             L, R = decode_pair(inp, mode, asg)
             okq = exp is not None and S.check_example_full(inp, out, op, mode, asg)
-            em.emit(f"  {tup_s} {L}{'*' if op in S.MUL_FAM else '+' if op in S.ADD_FAM else '-'}{R}"
+            em.emit(f"  {tup_s} {L}{_opsym(op)}{R}"
                     f"={v} {'ok' if okq else 'no'}")
             if okq:
                 found = True
@@ -625,7 +659,7 @@ class Narrator:
             L, R = decode_pair(inp, mode, asg)
             exp, v = expected_body(inp, out, op, mode, asg)
             got_ok = exp is not None and all(asg[c] == int(d) for c, d in zip(body, exp))
-            sym = '*' if op in S.MUL_FAM else '+' if op in S.ADD_FAM else '-'
+            sym = _opsym(op)
             em.emit(f"  e{k+1}: {L}{sym}{R}={v}, result digits {''.join(str(asg[c]) for c in body)} "
                     f"want {exp if exp else '?'} {'ok' if got_ok else 'MISMATCH'}")
             if not got_ok:
@@ -643,7 +677,7 @@ class Narrator:
             asg = {s: next(iter(domains[s])) for s in (q[0], q[1], q[3], q[4])}
             L, R = decode_pair(q, mode, asg)
             v = S.op_value(op, L, R)
-            sym = '*' if op in S.MUL_FAM else '+' if op in S.ADD_FAM else '-'
+            sym = _opsym(op)
             em.emit(f"Query {q}: {q[0]}{q[1]}={asg[q[0]]}{asg[q[1]]} {q[3]}{q[4]}={asg[q[3]]}{asg[q[4]]}"
                     + (f" (digits reversed: {L} and {R})" if mode == "rev_both" else f" -> {L} and {R}"))
             em.emit(f"  {L}{sym}{R} = {v}")
@@ -744,7 +778,7 @@ def narrate_certificate(nar, name, ops, mode, witness, ans):
             continue
         L, R = decode_pair(inp, mode, witness)
         v = S.op_value(op, L, R)
-        sym = '*' if op in S.MUL_FAM else '+' if op in S.ADD_FAM else '-'
+        sym = _opsym(op)
         em.emit(f"  e{k+1}: {L}{sym}{R}={v} ok")
     em.emit(f"  its query answer: {ans}")
 
