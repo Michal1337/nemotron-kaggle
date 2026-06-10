@@ -1014,16 +1014,8 @@ def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
     # unique wrong program (audit 2026-06-10); the external gold keep/drop filter
     # is what drops them. If the agreed answer disagrees with the stride
     # selection, we re-render so Selected/Applying are correct and self-consistent.
-    def _reproduces_examples(rule_vec: List[RuleCandidate]) -> bool:
-        for inp, out in zip(inputs, outputs):
-            got = "".join(_evaluate_rule(inp, r) for r in rule_vec)
-            if got != out:
-                return False
-        return True
-
     best_answer = "".join(_evaluate_rule(question_bits, r) for r in best)
     from reasoners.bitword_solver import (
-        per_bit_ops,
         solve as _ww_solve,
         solve_program,
         eval_program,
@@ -1034,84 +1026,51 @@ def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
     ex_pairs = list(zip(inputs, outputs))
     ww_answer = _ww_solve(ex_pairs, question_bits)
     if ww_answer is not None and ww_answer != best_answer:
-        # witness program for transparent narration only (decision stays with
-        # _ww_solve; solve_program mirrors its enumeration order exactly)
-        _ww2, ww_prog = solve_program(ex_pairs, question_bits)
-        if _ww2 != ww_answer:
-            ww_prog = None
-        pb = per_bit_ops(ex_pairs, question_bits, ww_answer)
-        if pb is not None:
-
-            def _mk(fam: str, p, q) -> RuleCandidate:
-                if fam == "I":
-                    return RuleCandidate("I", p, None, f"I{p}")
-                if fam == "NOT":
-                    return RuleCandidate("NOT", p, None, f"NOT{p}")
-                if fam == "0":
-                    return RuleCandidate("0", None, None, "C0")
-                if fam == "1":
-                    return RuleCandidate("1", None, None, "C1")
-                return RuleCandidate(fam, p, q, f"{fam}{p}{q}")
-
-            ww_best = [_mk(fam, p, q) for (fam, p, q) in pb]
-            if _reproduces_examples(ww_best):
-                best = ww_best
-                lines.append("")
-                lines.append("Reselect (whole-word coverage)")
-                lines.append(
-                    "Cross-check with whole-word programs of up to 3 ROT/SHL/SHR "
-                    "terms (each optionally negated) combined with AND/OR/XOR: "
-                    "every example-consistent program agrees on the question and "
-                    "disagrees with the stride selection above, so we reselect "
-                    "per-bit rules consistent with the examples and the agreed "
-                    "answer."
+        # Unified override (audit 2026-06-11): the old per-bit "Reselect"
+        # render trained FLAT at 23% vs 95% base - a model cannot execute an
+        # asserted rule-swap. Every override now renders the whole-word
+        # program EXPLICITLY: found program -> checked on every example ->
+        # applied to the question term-by-term. Also shorter than the old
+        # reselect path (skips the duplicate Selected/Output sections).
+        ww2, prog = solve_program(ex_pairs, question_bits)
+        if ww2 == ww_answer and prog is not None:
+            terms = prog[0::2]
+            lines.append("")
+            lines.append("Cross-check (whole-word)")
+            lines.append(
+                "Check whole-word programs of up to 3 ROT/SHL/SHR terms "
+                "(each optionally negated) combined with AND/OR/XOR; the "
+                "agreeing program disagrees with the per-bit selection above, "
+                "so that selection is a spurious fit - use the program."
+            )
+            lines.append(f"Found {program_name(prog)}")
+            lines.append("Check on examples")
+            ok_all = True
+            for inp, out in ex_pairs:
+                words, res = eval_program(inp, prog)
+                parts = " ".join(
+                    f"{term_name(t)}={w}" for t, w in zip(terms, words)
                 )
-                if ww_prog is not None:
-                    lines.append(f"Agreed program: {program_name(ww_prog)} -> {ww_answer}")
-                for i, rule in enumerate(best):
-                    lines.append(f"{i} {rule.expr}")
-        else:
-            # Rendering rung 2: the agreed whole-word answer has no per-bit
-            # <=2-input expression. Narrate the word-level program directly
-            # (same fixed procedure, one extra rendering rung).
-            ww2, prog = solve_program(ex_pairs, question_bits)
-            if ww2 == ww_answer and prog is not None:
-                lines.append("")
-                lines.append("Reselect (whole-word program)")
+                flag = "yes" if res == out else "no"
+                lines.append(f"{inp} {parts} -> {res} vs {out} {flag}")
+                if res != out:
+                    ok_all = False
+            if ok_all:
                 lines.append(
-                    "Per-bit rules cannot express the column behaviour; "
-                    "searching whole-word programs of up to 3 ROT/SHL/SHR "
-                    "terms (each optionally negated) combined with AND/OR/XOR."
+                    "All example-consistent programs agree on the question."
                 )
-                lines.append(f"Found {program_name(prog)}")
-                terms = prog[0::2]
-                lines.append("Check on examples")
-                ok_all = True
-                for inp, out in ex_pairs:
-                    words, res = eval_program(inp, prog)
-                    parts = " ".join(
-                        f"{term_name(t)}={w}" for t, w in zip(terms, words)
-                    )
-                    flag = "yes" if res == out else "no"
-                    lines.append(f"{inp} {parts} -> {res} vs {out} {flag}")
-                    if res != out:
-                        ok_all = False
-                if ok_all:
-                    lines.append(
-                        "All example-consistent programs agree on the question."
-                    )
-                    lines.append("")
-                    lines.append(f"Applying to {question_bits}")
-                    words, res = eval_program(question_bits, prog)
-                    for t, w in zip(terms, words):
-                        lines.append(f"{term_name(t)} = {w}")
-                    lines.append(f"Combined = {res}")
-                    lines.append("")
-                    lines.append("I will now return the answer in \\boxed{}")
-                    lines.append(
-                        f"The answer in \\boxed{{–}} is \\boxed{{{res}}}"
-                    )
-                    return "\n".join(lines)
+                lines.append("")
+                lines.append(f"Applying to {question_bits}")
+                words, res = eval_program(question_bits, prog)
+                for t, w in zip(terms, words):
+                    lines.append(f"{term_name(t)} = {w}")
+                lines.append(f"Combined = {res}")
+                lines.append("")
+                lines.append("I will now return the answer in \\boxed{}")
+                lines.append(
+                    f"The answer in \\boxed{{–}} is \\boxed{{{res}}}"
+                )
+                return "\n".join(lines)
 
     lines.append("Selected")
     for i, rule in enumerate(best):
