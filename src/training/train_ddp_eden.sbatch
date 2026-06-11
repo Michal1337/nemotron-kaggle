@@ -21,6 +21,9 @@ cd "$REPO"
 source .venv/bin/activate
 export PYTHONUNBUFFERED=1 TOKENIZERS_PARALLELISM=false NCCL_DEBUG=WARN
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+# eden H100 = 80GB (vs helios GH200 96GB); expandable_segments reclaims the
+# fragmented reserve that caused a marginal OOM at step 2.
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export TRITON_CACHE_DIR=$HOME/.cache/triton
 export TORCHINDUCTOR_CACHE_DIR=$HOME/.cache/inductor
 mkdir -p "$REPO/runs" "$TRITON_CACHE_DIR" "$TORCHINDUCTOR_CACHE_DIR"
