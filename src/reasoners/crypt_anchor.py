@@ -1,4 +1,12 @@
-"""Anchor-DFS narrator for cryptarithm_deduce (v4, after the shared writeup).
+"""Anchor-DFS narrator for cryptarithm_deduce (v5 render of the v4 design).
+
+v5 render changes (pilot forensics 2026-06-11: ep1-6 = 0/52 arithmetic,
+9-12/25 concat): single glyph table + one line per fact (old pair lines were
+57% of miss causes via one-atom slips); concat gate ALWAYS rendered with a
+failing witness on arithmetic problems (11 hallucinated-gate escapes); concat
+apply spelled per position (9 byte-perfect prefixes lost a one-shot
+permutation). Candidate-list derivability is the remaining open design issue
+(0/620 gold rows reproduced at pilot scale).
 
 Skeleton: remap (per-position, Cyrillic digit atoms - 1 BPE token each on the
 Nemotron tokenizer) -> per-op-char narrowing by result length/sign -> concat
@@ -249,55 +257,81 @@ def _narrate(prob):
             raise Abort
         ren[c] = DIGIT_ATOMS[len(ren)]
 
-    em.emit("remap(pos2 is op):")
+    # v5: single glyph table + one line per fact. The old 3-line-per-fact
+    # per-position pair render was the dominant failure surface in the pilot
+    # (57% of misses = one atom pair swapped in those lines, carried
+    # consistently). Fewer glyph restatements = fewer slip opportunities.
     by_char = defaultdict(list)
     lexs = []
-    for k, (inp, out) in enumerate(exs):
+    for inp, out in exs:
         sign = len(out) > 1 and out[0] == inp[2]
         body = out[1:] if sign else out
         for c in (inp[0], inp[1], inp[3], inp[4]) + tuple(body):
             see(c)
-        em.emit(f"fact{k}【{inp}】=【{out}】")
-        pairs_in = " ".join(f"{c}{ren[c] if c not in opchars else 'op'}" for c in inp)
-        pairs_out = " ".join(("-" if (sign and j == 0) else f"{c}{ren[c]}")
-                             for j, c in enumerate(out if not sign else out)
-                             ) if not sign else ("sign " + " ".join(f"{c}{ren[c]}" for c in body))
+    for c in (q[0], q[1], q[3], q[4]):
+        see(c)
+    em.emit("remap(pos2 is op): " + " ".join(f"【{c}】={a}" for c, a in ren.items()))
+    for k, (inp, out) in enumerate(exs):
+        sign = len(out) > 1 and out[0] == inp[2]
+        body = out[1:] if sign else out
         lin = "".join(ren.get(c, c) for c in (inp[0], inp[1])) + f"【{inp[2]}】" + \
               "".join(ren.get(c, c) for c in (inp[3], inp[4]))
         lout = ("-" if sign else "") + "".join(ren[c] for c in body)
-        em.emit(f"  {pairs_in}  =  {pairs_out}  ->  {lin} = {lout}")
         syms = sorted(set(body) | {inp[0], inp[1], inp[3], inp[4]}, key=lambda c: ren[c])
-        em.emit(f"  r.len={len(body)}{' neg' if sign else ''} sym=[{','.join(ren[c] for c in syms)}]")
+        em.emit(f"fact{k}【{inp}】=【{out}】 -> {lin} = {lout}  "
+                f"r.len={len(body)}{' neg' if sign else ''} sym=[{','.join(ren[c] for c in syms)}]")
         by_char[inp[2]].append((k, inp, out))
         lexs.append((inp, out))
-    for c in (q[0], q[1], q[3], q[4]):
-        see(c)
-    em.emit(f"Query【{q}】")
-    em.emit("  " + " ".join(f"{c}{ren[c] if c not in opchars else 'op'}" for c in q)
-            + "  ->  " + "".join(ren.get(c, c) for c in (q[0], q[1])) + f"【{q[2]}】"
-            + "".join(ren.get(c, c) for c in (q[3], q[4])))
+    em.emit(f"Query【{q}】 -> " + "".join(ren.get(c, c) for c in (q[0], q[1]))
+            + f"【{q[2]}】" + "".join(ren.get(c, c) for c in (q[3], q[4])))
     em.emit()
     if q[2] not in by_char:
         _why("q-undemo")
         return None
 
-    # ---- concat gate (FIRST: rearrangement-consistency of the query char) ----
+    # ---- concat gate (FIRST; v5: ALWAYS rendered, with a failing witness on
+    # the NO path - the pilot showed 11 std/swap generations hallucinating a
+    # concat gate because the NO case was silent/undemonstrated) ----
     qfacts = [(inp, out) for _, inp, out in by_char[q[2]]]
+    hit = None
     for op, idx in S.CONCAT.items():
         if all(len(out) == 4 and all(out[j] == inp[i] for j, i in enumerate(idx))
                for inp, out in qfacts):
-            em.emit(f"concat check【{q[2]}】: every fact's result is its operand symbols "
-                    f"rearranged ({op}) - no digit code needed:")
-            for inp, out in qfacts:
-                em.emit(f"  【{inp}】=【{out}】 ok")
-            ans = "".join(q[i] for i in idx)
-            em.emit(f"apply to Query【{q}】: {ans}")
-            em.emit("I will now return the answer in \\boxed{}")
-            em.emit(f"The answer in \\boxed{{–}} is \\boxed{{{ans}}}")
-            if em.over_exact():
-                _why("governor-final")
-                raise Abort
-            return "\n".join(em.lines)
+            hit = (op, idx)
+            break
+    if hit is not None:
+        op, idx = hit
+        em.emit(f"concat check【{q[2]}】: every fact's result is its operand symbols "
+                f"rearranged ({op}) - no digit code needed:")
+        for inp, out in qfacts:
+            em.emit(f"  【{inp}】=【{out}】 ok")
+        # per-position apply scaffold (the pilot lost 9 byte-perfect prefixes
+        # on this step as a one-shot permutation; spell it out per position)
+        em.emit(f"apply to Query【{q}】 ({op}):")
+        for j, i in enumerate(idx):
+            em.emit(f"  out{j} = q{i} = {q[i]}")
+        ans = "".join(q[i] for i in idx)
+        em.emit(f"answer: {ans}")
+        em.emit("I will now return the answer in \\boxed{}")
+        em.emit(f"The answer in \\boxed{{–}} is \\boxed{{{ans}}}")
+        if em.over_exact():
+            _why("governor-final")
+            raise Abort
+        return "\n".join(em.lines)
+    # NO witness: a short result kills all 4 rearrangement ops at once;
+    # otherwise name the first mismatch per op
+    short = next(((inp, out) for inp, out in qfacts if len(out) != 4), None)
+    if short is not None:
+        inp, out = short
+        em.emit(f"concat check【{q[2]}】: fact result【{out}】 has {len(out)} symbols, "
+                f"not a rearrangement of the 4 operand symbols - no")
+    else:
+        for op, idx in S.CONCAT.items():
+            inp, out = next((inp, out) for inp, out in qfacts
+                            if any(out[j] != inp[i] for j, i in enumerate(idx)))
+            j = next(j for j, i in enumerate(idx) if out[j] != inp[i])
+            em.emit(f"concat check【{q[2]}】({op}): 【{inp}】=【{out}】 pos{j} "
+                    f"{out[j]}≠{inp[idx[j]]} - no")
 
     # ---- narrowing (per op char) ----
     em.emit("narrowing:")
