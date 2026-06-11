@@ -36,16 +36,24 @@ from narrators.investigations_to_reasoning import extract_final_answer
 #       P0-P8 narrator, 209/659 real coverage incl its own concat gate, honest);
 #       guess -> the patched concat narrator (abstains on arithmetic; the
 #       guess-fam table narrator stays env-gated until audited).
+#   "anchor" - deduce -> reasoners.crypt_anchor (v4 anchor-DFS narrator,
+#       160/659 real coverage incl its own concat gate, exact-tokenizer
+#       governed); guess -> the patched concat narrator (same as vfirst).
 #   "combo"  - legacy: charset->ops lookup deduce + family-table guess
 #       (lookup is gold-conditioned per the audit; do not use for new corpora).
 #   "concat" - legacy v1/v2 behavior (concat-only; arithmetic now abstains).
 TV_CRYPT_NARR = os.environ.get("TV_CRYPT_NARR", "vfirst")
-LC = CGF = VF = None
+LC = CGF = VF = AN = None
 if TV_CRYPT_NARR == "combo":
     import reasoners.crypt_lookup_combo as LC
     import reasoners.crypt_guess_fam as CGF
 elif TV_CRYPT_NARR == "vfirst":
     import reasoners.crypt_vfirst as VF
+elif TV_CRYPT_NARR == "anchor":
+    os.environ.setdefault(
+        "NEMOTRON_TOKENIZER_JSON",
+        "/mnt/evafs/groups/re-com/mgromadzki/llms/nemotron-3-nano-30b-a3b-bf16/tokenizer.json")
+    import reasoners.crypt_anchor as AN
 
 G = "/mnt/evafs/groups/re-com/mgromadzki"
 PB = G + "/nemotron-master/problems"
@@ -93,6 +101,8 @@ def narrate(prob, cat):
                     else CGF.reasoning_cryptarithm_guess_fam(prob))
         if TV_CRYPT_NARR == "vfirst" and cat == "cryptarithm_deduce":
             return VF.reasoning_cryptarithm_vfirst(prob)
+        if TV_CRYPT_NARR == "anchor" and cat == "cryptarithm_deduce":
+            return AN.reasoning_cryptarithm_anchor(prob)
         return CR.reasoning_cryptarithm(prob)
     return None
 
