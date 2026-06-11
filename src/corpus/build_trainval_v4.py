@@ -129,23 +129,30 @@ def main():
 
     def load(path):
         return [json.loads(l) for l in open(path, encoding='utf-8')]
+    # adaptive val split: at most VAL_SYNTH_PER, and never more than 25% of the
+    # set (so a small synth pool like crypt_guess doesn't starve its train slice)
+    def split(rows):
+        rows = sorted(rows, key=lambda s: s['id'])
+        n = min(VAL_SYNTH_PER, len(rows) // 4)
+        return rows[:n], rows[n:]
+
     # eq synth: split per sub-category
     eq_rows = load(SYNTH['eq'])
     for sub in ('equation_numeric_deduce', 'equation_numeric_guess'):
-        rows = sorted([s for s in eq_rows if s['category'] == sub], key=lambda s: s['id'])
-        for s in rows[:VAL_SYNTH_PER]:
+        vh, tr = split([s for s in eq_rows if s['category'] == sub])
+        for s in vh:
             val.append({'id': s['id'], 'category': sub, 'source': 'synth',
                         'prompt': s['prompt'], 'answer': s['answer']})
-        for s in rows[VAL_SYNTH_PER:]:
+        for s in tr:
             tasks.append((sub, 'synth', s['id'], s['prompt'], s['examples'], s['answer'], s['question']))
     # bit / anchor / guess synth
     for key, cat in (('bit', 'bit_manipulation'), ('anchor', 'cryptarithm_deduce'),
                      ('guess', 'cryptarithm_guess')):
-        rows = sorted(load(SYNTH[key]), key=lambda s: s['id'])
-        for s in rows[:VAL_SYNTH_PER]:
+        vh, tr = split(load(SYNTH[key]))
+        for s in vh:
             val.append({'id': s['id'], 'category': cat, 'source': 'synth',
                         'prompt': s['prompt'], 'answer': s['answer']})
-        for s in rows[VAL_SYNTH_PER:]:
+        for s in tr:
             tasks.append((cat, 'synth', s['id'], s['prompt'], s['examples'], s['answer'], s['question']))
 
     # ---- 3) narrate + tokenize ----
