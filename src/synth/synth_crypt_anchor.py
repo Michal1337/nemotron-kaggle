@@ -336,7 +336,10 @@ def classify(prob):
     if not (0 <= i < j) or cot[i + 6:j] != prob["answer"]:
         return None
     tok = tok_count(cot)
-    if "concat check" in cot:
+    # v5: the concat gate is rendered on EVERY CoT (failing witness on the NO
+    # path), so "concat check" no longer discriminates - only the YES path
+    # emits "no digit code needed". Match the build script's tail detection.
+    if "no digit code needed" in cot:
         tail = "concat"
     elif "try swap" in cot:
         tail = "swap"
