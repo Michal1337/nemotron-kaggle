@@ -15,12 +15,16 @@ set -uo pipefail
 REPO=/home2/faculty/mgromadzki/src/nemotron-kaggle
 cd "$REPO"
 source .venv/bin/activate
+# compile caches on the re-com group space (16T), NOT the small /home2 quota
+export TRITON_CACHE_DIR=/mnt/evafs/groups/re-com/mgromadzki/.cache/triton
+export TORCHINDUCTOR_CACHE_DIR=/mnt/evafs/groups/re-com/mgromadzki/.cache/inductor
+mkdir -p "$TRITON_CACHE_DIR" "$TORCHINDUCTOR_CACHE_DIR"
 MODEL=/mnt/evafs/groups/re-com/mgromadzki/llms/nemotron-3-nano-30b-a3b-bf16
 DS_PATH="${DS_PATH:?set DS_PATH}"
 STEPS="${STEPS:?set STEPS}"
 TAG="${TAG:-1gpu}"
 EPOCHS="${EPOCHS:-6}"
-BATCH="${BATCH:-16}"
+BATCH="${BATCH:-8}"  # 8 fits the 80GB H100 (eq+pilot proven); 16 OOMs
 OUT="$DS_PATH/adapter-${TAG}"
 SHUF=""; [ "$EPOCHS" -ge 2 ] && SHUF="--shuffle-dataset"
 echo "1GPU: DS_PATH=$DS_PATH STEPS=$STEPS BATCH=$BATCH OUT=$OUT EPOCHS=$EPOCHS"

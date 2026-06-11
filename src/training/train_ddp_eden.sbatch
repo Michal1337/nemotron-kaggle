@@ -24,8 +24,10 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 # eden H100 = 80GB (vs helios GH200 96GB); expandable_segments reclaims the
 # fragmented reserve that caused a marginal OOM at step 2.
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-export TRITON_CACHE_DIR=$HOME/.cache/triton
-export TORCHINDUCTOR_CACHE_DIR=$HOME/.cache/inductor
+# compile caches on the re-com group space (16T), NOT the small /home2 quota;
+# DDP appends rank<N>/ subdirs so it would double the home2 usage
+export TRITON_CACHE_DIR=/mnt/evafs/groups/re-com/mgromadzki/.cache/triton
+export TORCHINDUCTOR_CACHE_DIR=/mnt/evafs/groups/re-com/mgromadzki/.cache/inductor
 mkdir -p "$REPO/runs" "$TRITON_CACHE_DIR" "$TORCHINDUCTOR_CACHE_DIR"
 # per-job work dir; the DDP trainer chdir's into rank<N>/ subfolders under cwd
 WORK=/mnt/evafs/groups/re-com/mgromadzki/runwork/$SLURM_JOB_ID
