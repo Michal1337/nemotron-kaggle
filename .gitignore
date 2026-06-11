@@ -34,4 +34,4 @@ kaggle.json
 .idea/
 *.swp
 .DS_Store
-Thumbs.db
+Thumbs.dbbit_v2_evals/train_logprobs_v2.jsonl
