@@ -1029,11 +1029,9 @@ def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
     ex_pairs = list(zip(inputs, outputs))
     ww2, prog = solve_program(ex_pairs, question_bits)
 
-    lines.append("Selected")
-    for i, rule in enumerate(best):
-        lines.append(f"{i} {rule.expr}")
-
-    # 8) Apply to question (per-bit output, not yet boxed).
+    # 8) Apply to question (per-bit output, not yet boxed). The old "Selected"
+    # block that re-listed all 8 chosen rules was dropped: _emit_apply already
+    # names rule.expr per bit, so it was ~9 lines of pure repetition.
     lines.append("")
     best_answer = _emit_apply(lines, question_bits, best, box=False)
 
