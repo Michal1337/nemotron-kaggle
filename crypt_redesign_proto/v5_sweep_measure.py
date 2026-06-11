@@ -51,7 +51,10 @@ def work(r):
         return {'pid': r['id'], 'st': 'ERR:' + type(e).__name__}
     if cot is None:
         return {'pid': r['id'], 'st': 'abstain', 'decoy_same': cot_d is None}
-    boxed = cot.rsplit('boxed{', 1)[-1].split('}')[0]
+    # rfind both ways: gold answers may contain literal { } glyphs
+    i = cot.rfind('boxed{')
+    j = cot.rfind('}')
+    boxed = cot[i + 6:j] if 0 <= i < j else ''
     st = 'ok' if boxed == r['answer'] else 'miss'
     out = {'pid': r['id'], 'st': st, 'decoy_same': cot == cot_d,
            'tok': A.tok_count(cot),
