@@ -52,6 +52,12 @@ def main() -> None:
 
     import torch
     from unsloth import FastLanguageModel
+    # Load the adapter the SAME way the trainer did, NOT PeftModel.from_pretrained:
+    # on eden's peft 0.19 / transformers 5.3 the latter silently fails to match
+    # the Unsloth-saved key names ("Found missing adapter keys" -> LoRA loads as
+    # ZEROS -> you score the BASE model). Replicate get_peft_model + the
+    # remapping load_pretrained_adapter (which asserts all weights load).
+    import train_huikang_style_ddp as T
 
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=args.base_model,
@@ -64,8 +70,14 @@ def main() -> None:
         attn_implementation="eager",
         dtype=torch.bfloat16,
     )
-    from peft import PeftModel
-    model = PeftModel.from_pretrained(model, args.adapter)
+    model = FastLanguageModel.get_peft_model(
+        model, r=T.LORA_RANK, target_modules=T.TARGET_MODULES,
+        lora_alpha=T.LORA_ALPHA, lora_dropout=T.LORA_DROPOUT,
+        bias="none", use_gradient_checkpointing=False, random_state=42,
+    )
+    T.patch_nemotron_fast_path()
+    T.add_lm_head_lora(model)
+    T.load_pretrained_adapter(model, args.adapter)  # asserts loaded == saved
     model.eval()
     FastLanguageModel.for_inference(model)
 
