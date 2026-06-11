@@ -62,8 +62,8 @@ def work(task):
     b = cot.rsplit('boxed{', 1)[-1].split('}')[0]
     if b != ans:
         return None
-    kind = ('override' if 'Disagrees with the per-bit output' in cot
-            else 'match' if 'Matches the per-bit output.' in cot
+    kind = ('override' if 'program != per-bit' in cot
+            else 'match' if 'program == per-bit' in cot
             else 'noprog')
     tk = _tok_cot(prompt, cot, ans)
     if tk is None:

@@ -536,9 +536,6 @@ def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
     lines: List[str] = []
 
     # 1) header
-    lines.append(
-        "We need to deduce the transformation by matching the example outputs."
-    )
     lines.append("I will put my final answer inside \\boxed{}.")
     lines.append("")
 
@@ -1040,13 +1037,11 @@ def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
     lines.append("")
     best_answer = _emit_apply(lines, question_bits, best, box=False)
 
-    # 9) Whole-word check (always present).
+    # 9) Whole-word check (always present). Terse tags only - the prose that
+    # used to explain the search / verdict was high-entropy NL (high per-token
+    # loss, won't reproduce) and was the bulk of the section's length.
     lines.append("")
     lines.append("Whole-word check")
-    lines.append(
-        "Search programs of up to 3 ROT/SHL/SHR terms (each optionally NOT) "
-        "combined with AND/OR/XOR that reproduce every example output."
-    )
     final = best_answer
     if prog is not None:
         terms = prog[0::2]
@@ -1078,25 +1073,16 @@ def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
                 lines.append(f"{term_name(t)} = {w}")
             lines.append(f"Combined = {res}")
             if res == best_answer:
-                lines.append("Matches the per-bit output.")
+                lines.append("program == per-bit")
             else:
-                lines.append(
-                    "Disagrees with the per-bit output - the diverging per-bit "
-                    "picks are spurious example-fits; the program is "
-                    "example-exact, use it."
-                )
+                lines.append("program != per-bit; use program")
                 final = res
         else:
             # defensive only: solve_program verifies on examples by construction
-            lines.append("Program fails an example - keep the per-bit output.")
+            lines.append("program misfit; keep per-bit")
     else:
-        lines.append(
-            "No agreeing program: nothing of up to 3 terms fits every example, "
-            "or the fitting programs disagree on the question. Keep the "
-            "per-bit output."
-        )
+        lines.append("no program; keep per-bit")
 
     lines.append("")
-    lines.append("I will now return the answer in \\boxed{}")
-    lines.append(f"The answer in \\boxed{{–}} is \\boxed{{{final}}}")
+    lines.append(f"\\boxed{{{final}}}")
     return "\n".join(lines)

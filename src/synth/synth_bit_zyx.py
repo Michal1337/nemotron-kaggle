@@ -108,7 +108,7 @@ def classify(prob):
     boxed = cot.rsplit("boxed{", 1)[-1].split("}")[0]
     if boxed != prob["answer"]:
         return None
-    return "override" if "Disagrees with the per-bit output" in cot else "base"
+    return "override" if "program != per-bit" in cot else "base"
 
 
 def find_override_query(prob, prog, rng):
