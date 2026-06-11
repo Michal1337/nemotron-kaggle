@@ -1,0 +1,359 @@
+We infer the transformation rule from the facts by bounded rule-based trial.
+I will put my final answer inside \boxed{}.
+
+remap(pos2 is op):
+fact0【::-@/】=【${】
+  :Б :Б -op @Г /Д  =  $Ж {И  ->  ББ【-】ГД = ЖИ
+  r.len=2 sym=[Б,Г,Д,Ж,И]
+fact1【]'+@]】=【]<】
+  ]Л 'М +op @Г ]Л  =  ]Л <П  ->  ЛМ【+】ГЛ = ЛП
+  r.len=2 sym=[Г,Л,М,П]
+fact2【{]*/{】=【/{:】
+  {И ]Л *op /Д {И  =  /Д {И :Б  ->  ИЛ【*】ДИ = ДИБ
+  r.len=3 sym=[Б,Д,И,Л]
+fact3【'}-/$】=【{]】
+  'М }Т -op /Д $Ж  =  {И ]Л  ->  МТ【-】ДЖ = ИЛ
+  r.len=2 sym=[Д,Ж,И,Л,М,Т]
+fact4【%%+%%】=【<<】
+  %Ф %Ф +op %Ф %Ф  =  <П <П  ->  ФФ【+】ФФ = ПП
+  r.len=2 sym=[П,Ф]
+Query【%]-$]】
+  %Ф ]Л -op $Ж ]Л  ->  ФЛ【-】ЖЛ
+
+narrowing:
+【*】 facts r.len=3 -> 《a+b,a*b,a+b+1,a+b-1,a*b+1,a*b-1》
+【+】 facts r.len=2,2 -> 《a+b,a*b,|a-b|,a+b+1,a+b-1,a*b+1,a*b-1,a-b,b-a,max mod min》
+【-】 facts r.len=2,2 -> 《a+b,a*b,|a-b|,a+b+1,a+b-1,a*b+1,a*b-1,a-b,b-a,max mod min》
+pre: 《standard,swap》 - standard first, swap only if standard yields nothing
+
+anchor: fact2 (most constrained, ops 《a+b,a*b,a+b+1,a+b-1,a*b+1,a*b-1》)
+standard: pattern УХ?ЦУ=ЦУЧ has over 24 candidates - skip this mode
+swap (operands+result digit-reversed): pattern УХ?ЦУ=ЦУЧ -> 9 candidates:
+  15*50=750 ->S0: Д0 Л1 И5 Б7
+  16*60=960 ->S1: Д0 Л1 И6 Б9
+  21*15=315 ->S2: И1 Л2 Б3 Д5
+  41*15=615 ->S3: И1 Л4 Д5 Б6
+  51*12=612 ->S4: И1 Д2 Л5 Б6
+  51*14=714 ->S5: И1 Д4 Л5 Б7
+  51*16=816 ->S6: И1 Л5 Д6 Б8
+  51*18=918 ->S7: И1 Л5 Д8 Б9
+  61*15=915 ->S8: И1 Д5 Л6 Б9
+
+S0>
+S0>fact0 a+b: no fit in 30 tries NG
+S0>fact0 a*b: no fit in 30 tries NG
+S0>fact0 |a-b|: no fit in 30 tries NG
+S0>fact0 a+b+1: no fit in 30 tries NG
+S0>fact0 a+b-1: no fit in 30 tries NG
+S0>fact0 a*b+1: no fit in 30 tries NG
+S0>fact0 a*b-1: no fit in 30 tries NG
+S0>fact0 a-b: no fit in 30 tries NG
+S0>fact0 b-a: no fit in 30 tries NG
+S0>fact0 max mod min: no fit in 30 tries NG
+S1>
+S1>fact0 a+b: no fit in 30 tries NG
+S1>fact0 a*b: no fit in 30 tries NG
+S1>fact0 |a-b|: no fit in 30 tries NG
+S1>fact0 a+b+1: no fit in 30 tries NG
+S1>fact0 a+b-1: no fit in 30 tries NG
+S1>fact0 a*b+1: no fit in 30 tries NG
+S1>fact0 a*b-1: no fit in 30 tries NG
+S1>fact0 a-b: no fit in 30 tries NG
+S1>fact0 b-a: no fit in 30 tries NG
+S1>fact0 max mod min: no fit in 30 tries NG
+S2>
+S2>fact0 a+b: no fit in 30 tries NG
+S2>fact0 a*b: no fit in 30 tries NG
+S2>fact0 |a-b| Г=0,Ж=7: fits OK
+S2>K0>fact1 a+b М=4,П=6: fits OK
+S2>K0>fact1 a+b М=6,П=8: fits OK
+S2>K0>M0>fact3 |a-b|: no fit in 2 tries NG
+S2>K0>M1>fact3 |a-b| Т=9: fits OK
+S2>K0>M1>N0>fact4 a+b Ф=4: fits OK
+S2>K0>M1>N0>O0> complete: query 24?27 via |a-b| = 3 -> :
+S2>K0>fact1 a*b: no fit in 12 tries NG
+S2>K0>fact1 |a-b| М=6,П=4: fits OK
+S2>K0>fact1 |a-b| М=8,П=6: fits OK
+S2>K0>M2>fact3 |a-b| Т=9: fits OK
+S2>K0>M2>N0>fact4 |a-b|: no fit in 1 tries NG
+S2>K0>M3>fact3 |a-b|: no fit in 2 tries NG
+S2>K0>fact1 a+b+1: no fit in 12 tries NG
+S2>K0>fact1 a+b-1: no fit in 12 tries NG
+S2>K0>fact1 a*b+1: no fit in 12 tries NG
+S2>K0>fact1 a*b-1: no fit in 12 tries NG
+S2>K0>fact1 a-b М=6,П=4: fits OK
+S2>K0>fact1 a-b М=8,П=6: fits OK
+S2>K0>M4>fact3 |a-b| Т=9: fits OK
+S2>K0>M4>N0>fact4 a-b: no fit in 1 tries NG
+S2>K0>M5>fact3 |a-b|: no fit in 2 tries NG
+S2>K0>fact1 b-a: no fit in 12 tries NG
+S2>K0>fact1 max mod min: no fit in 12 tries NG
+S2>fact0 a+b+1: no fit in 30 tries NG
+S2>fact0 a+b-1: no fit in 30 tries NG
+S2>fact0 a*b+1: no fit in 30 tries NG
+S2>fact0 a*b-1: no fit in 30 tries NG
+S2>fact0 a-b: no fit in 30 tries NG
+S2>fact0 b-a Г=0,Ж=7: fits OK
+S2>K1>fact1 a+b М=4,П=6: fits OK
+S2>K1>fact1 a+b М=6,П=8: fits OK
+S2>K1>M0>fact3 b-a: no fit in 2 tries NG
+S2>K1>M1>fact3 b-a: no fit in 2 tries NG
+S2>K1>fact1 a*b: no fit in 12 tries NG
+S2>K1>fact1 |a-b| М=6,П=4: fits OK
+S2>K1>fact1 |a-b| М=8,П=6: fits OK
+S2>K1>M2>fact3 b-a: no fit in 2 tries NG
+S2>K1>M3>fact3 b-a: no fit in 2 tries NG
+S2>K1>fact1 a+b+1: no fit in 12 tries NG
+S2>K1>fact1 a+b-1: no fit in 12 tries NG
+S2>K1>fact1 a*b+1: no fit in 12 tries NG
+S2>K1>fact1 a*b-1: no fit in 12 tries NG
+S2>K1>fact1 a-b М=6,П=4: fits OK
+S2>K1>fact1 a-b М=8,П=6: fits OK
+S2>K1>M4>fact3 b-a: no fit in 2 tries NG
+S2>K1>M5>fact3 b-a: no fit in 2 tries NG
+S2>K1>fact1 b-a: no fit in 12 tries NG
+S2>K1>fact1 max mod min: no fit in 12 tries NG
+S2>fact0 max mod min Г=0,Ж=7: fits OK
+S2>K2>fact1 a+b М=4,П=6: fits OK
+S2>K2>fact1 a+b М=6,П=8: fits OK
+S2>K2>M0>fact3 max mod min: no fit in 2 tries NG
+S2>K2>M1>fact3 max mod min Т=9: fits OK
+S2>K2>M1>N0>fact4 a+b Ф=4: fits OK
+S2>K2>M1>N0>O0> complete: query 24?27 via max mod min = 3 -> :
+S2>K2>fact1 a*b: no fit in 12 tries NG
+S2>K2>fact1 |a-b| М=6,П=4: fits OK
+S2>K2>fact1 |a-b| М=8,П=6: fits OK
+S2>K2>M2>fact3 max mod min Т=9: fits OK
+S2>K2>M2>N0>fact4 |a-b|: no fit in 1 tries NG
+S2>K2>M3>fact3 max mod min: no fit in 2 tries NG
+S2>K2>fact1 a+b+1: no fit in 12 tries NG
+S2>K2>fact1 a+b-1: no fit in 12 tries NG
+S2>K2>fact1 a*b+1: no fit in 12 tries NG
+S2>K2>fact1 a*b-1: no fit in 12 tries NG
+S2>K2>fact1 a-b М=6,П=4: fits OK
+S2>K2>fact1 a-b М=8,П=6: fits OK
+S2>K2>M4>fact3 max mod min Т=9: fits OK
+S2>K2>M4>N0>fact4 a-b: no fit in 1 tries NG
+S2>K2>M5>fact3 max mod min: no fit in 2 tries NG
+S2>K2>fact1 b-a: no fit in 12 tries NG
+S2>K2>fact1 max mod min: no fit in 12 tries NG
+S3>
+S3>fact0 a+b: no fit in 30 tries NG
+S3>fact0 a*b: no fit in 30 tries NG
+S3>fact0 |a-b|: no fit in 30 tries NG
+S3>fact0 a+b+1: no fit in 30 tries NG
+S3>fact0 a+b-1: no fit in 30 tries NG
+S3>fact0 a*b+1: no fit in 30 tries NG
+S3>fact0 a*b-1: no fit in 30 tries NG
+S3>fact0 a-b: no fit in 30 tries NG
+S3>fact0 b-a: no fit in 30 tries NG
+S3>fact0 max mod min: no fit in 30 tries NG
+S4>
+S4>fact0 a+b: no fit in 30 tries NG
+S4>fact0 a*b: no fit in 30 tries NG
+S4>fact0 |a-b|: no fit in 30 tries NG
+S4>fact0 a+b+1: no fit in 30 tries NG
+S4>fact0 a+b-1: no fit in 30 tries NG
+S4>fact0 a*b+1: no fit in 30 tries NG
+S4>fact0 a*b-1: no fit in 30 tries NG
+S4>fact0 a-b: no fit in 30 tries NG
+S4>fact0 b-a: no fit in 30 tries NG
+S4>fact0 max mod min Г=4,Ж=8: fits OK
+S4>fact0 max mod min Г=8,Ж=0: fits OK
+S4>K0>fact1 a+b: no fit in 12 tries NG
+S4>K0>fact1 a*b: no fit in 12 tries NG
+S4>K0>fact1 |a-b|: no fit in 12 tries NG
+S4>K0>fact1 a+b+1: no fit in 12 tries NG
+S4>K0>fact1 a+b-1: no fit in 12 tries NG
+S4>K0>fact1 a*b+1: no fit in 12 tries NG
+S4>K0>fact1 a*b-1: no fit in 12 tries NG
+S4>K0>fact1 a-b: no fit in 12 tries NG
+S4>K0>fact1 b-a: no fit in 12 tries NG
+S4>K0>fact1 max mod min: no fit in 12 tries NG
+S4>K1>fact1 a+b: no fit in 12 tries NG
+S4>K1>fact1 a*b: no fit in 12 tries NG
+S4>K1>fact1 |a-b|: no fit in 12 tries NG
+S4>K1>fact1 a+b+1: no fit in 12 tries NG
+S4>K1>fact1 a+b-1: no fit in 12 tries NG
+S4>K1>fact1 a*b+1: no fit in 12 tries NG
+S4>K1>fact1 a*b-1: no fit in 12 tries NG
+S4>K1>fact1 a-b: no fit in 12 tries NG
+S4>K1>fact1 b-a: no fit in 12 tries NG
+S4>K1>fact1 max mod min: no fit in 12 tries NG
+S5>
+S5>fact0 a+b: no fit in 30 tries NG
+S5>fact0 a*b: no fit in 30 tries NG
+S5>fact0 |a-b|: no fit in 30 tries NG
+S5>fact0 a+b+1: no fit in 30 tries NG
+S5>fact0 a+b-1: no fit in 30 tries NG
+S5>fact0 a*b+1: no fit in 30 tries NG
+S5>fact0 a*b-1: no fit in 30 tries NG
+S5>fact0 a-b: no fit in 30 tries NG
+S5>fact0 b-a: no fit in 30 tries NG
+S5>fact0 max mod min: no fit in 30 tries NG
+S6>
+S6>fact0 a+b: no fit in 30 tries NG
+S6>fact0 a*b: no fit in 30 tries NG
+S6>fact0 |a-b|: no fit in 30 tries NG
+S6>fact0 a+b+1: no fit in 30 tries NG
+S6>fact0 a+b-1: no fit in 30 tries NG
+S6>fact0 a*b+1: no fit in 30 tries NG
+S6>fact0 a*b-1: no fit in 30 tries NG
+S6>fact0 a-b: no fit in 30 tries NG
+S6>fact0 b-a: no fit in 30 tries NG
+S6>fact0 max mod min: no fit in 30 tries NG
+S7>
+S7>fact0 a+b: no fit in 30 tries NG
+S7>fact0 a*b: no fit in 30 tries NG
+S7>fact0 |a-b| Г=2,Ж=7: fits OK
+S7>fact0 |a-b| Г=3,Ж=6: fits OK
+S7>fact0 |a-b| Г=6,Ж=3: fits OK
+S7>fact0 |a-b| Г=7,Ж=2: fits OK
+S7>K0>fact1 a+b: no fit in 12 tries NG
+S7>K0>fact1 a*b: no fit in 12 tries NG
+S7>K0>fact1 |a-b|: no fit in 12 tries NG
+S7>K0>fact1 a+b+1: no fit in 12 tries NG
+S7>K0>fact1 a+b-1: no fit in 12 tries NG
+S7>K0>fact1 a*b+1: no fit in 12 tries NG
+S7>K0>fact1 a*b-1: no fit in 12 tries NG
+S7>K0>fact1 a-b: no fit in 12 tries NG
+S7>K0>fact1 b-a: no fit in 12 tries NG
+S7>K0>fact1 max mod min: no fit in 12 tries NG
+S7>K1>fact1 a+b: no fit in 12 tries NG
+S7>K1>fact1 a*b: no fit in 12 tries NG
+S7>K1>fact1 |a-b|: no fit in 12 tries NG
+S7>K1>fact1 a+b+1: no fit in 12 tries NG
+S7>K1>fact1 a+b-1: no fit in 12 tries NG
+S7>K1>fact1 a*b+1: no fit in 12 tries NG
+S7>K1>fact1 a*b-1: no fit in 12 tries NG
+S7>K1>fact1 a-b: no fit in 12 tries NG
+S7>K1>fact1 b-a: no fit in 12 tries NG
+S7>K1>fact1 max mod min: no fit in 12 tries NG
+S7>K2>fact1 a+b: no fit in 12 tries NG
+S7>K2>fact1 a*b: no fit in 12 tries NG
+S7>K2>fact1 |a-b|: no fit in 12 tries NG
+S7>K2>fact1 a+b+1: no fit in 12 tries NG
+S7>K2>fact1 a+b-1: no fit in 12 tries NG
+S7>K2>fact1 a*b+1: no fit in 12 tries NG
+S7>K2>fact1 a*b-1: no fit in 12 tries NG
+S7>K2>fact1 a-b: no fit in 12 tries NG
+S7>K2>fact1 b-a: no fit in 12 tries NG
+S7>K2>fact1 max mod min: no fit in 12 tries NG
+S7>K3>fact1 a+b: no fit in 12 tries NG
+S7>K3>fact1 a*b: no fit in 12 tries NG
+S7>K3>fact1 |a-b|: no fit in 12 tries NG
+S7>K3>fact1 a+b+1: no fit in 12 tries NG
+S7>K3>fact1 a+b-1: no fit in 12 tries NG
+S7>K3>fact1 a*b+1: no fit in 12 tries NG
+S7>K3>fact1 a*b-1: no fit in 12 tries NG
+S7>K3>fact1 a-b: no fit in 12 tries NG
+S7>K3>fact1 b-a: no fit in 12 tries NG
+S7>K3>fact1 max mod min: no fit in 12 tries NG
+S7>fact0 a+b+1: no fit in 30 tries NG
+S7>fact0 a+b-1: no fit in 30 tries NG
+S7>fact0 a*b+1: no fit in 30 tries NG
+S7>fact0 a*b-1: no fit in 30 tries NG
+S7>fact0 a-b Г=2,Ж=7: fits OK
+S7>fact0 a-b Г=3,Ж=6: fits OK
+S7>fact0 a-b Г=6,Ж=3: fits OK
+S7>fact0 a-b Г=7,Ж=2: fits OK
+S7>K4>fact1 a+b: no fit in 12 tries NG
+S7>K4>fact1 a*b: no fit in 12 tries NG
+S7>K4>fact1 |a-b|: no fit in 12 tries NG
+S7>K4>fact1 a+b+1: no fit in 12 tries NG
+S7>K4>fact1 a+b-1: no fit in 12 tries NG
+S7>K4>fact1 a*b+1: no fit in 12 tries NG
+S7>K4>fact1 a*b-1: no fit in 12 tries NG
+S7>K4>fact1 a-b: no fit in 12 tries NG
+S7>K4>fact1 b-a: no fit in 12 tries NG
+S7>K4>fact1 max mod min: no fit in 12 tries NG
+S7>K5>fact1 a+b: no fit in 12 tries NG
+S7>K5>fact1 a*b: no fit in 12 tries NG
+S7>K5>fact1 |a-b|: no fit in 12 tries NG
+S7>K5>fact1 a+b+1: no fit in 12 tries NG
+S7>K5>fact1 a+b-1: no fit in 12 tries NG
+S7>K5>fact1 a*b+1: no fit in 12 tries NG
+S7>K5>fact1 a*b-1: no fit in 12 tries NG
+S7>K5>fact1 a-b: no fit in 12 tries NG
+S7>K5>fact1 b-a: no fit in 12 tries NG
+S7>K5>fact1 max mod min: no fit in 12 tries NG
+S7>K6>fact1 a+b: no fit in 12 tries NG
+S7>K6>fact1 a*b: no fit in 12 tries NG
+S7>K6>fact1 |a-b|: no fit in 12 tries NG
+S7>K6>fact1 a+b+1: no fit in 12 tries NG
+S7>K6>fact1 a+b-1: no fit in 12 tries NG
+S7>K6>fact1 a*b+1: no fit in 12 tries NG
+S7>K6>fact1 a*b-1: no fit in 12 tries NG
+S7>K6>fact1 a-b: no fit in 12 tries NG
+S7>K6>fact1 b-a: no fit in 12 tries NG
+S7>K6>fact1 max mod min: no fit in 12 tries NG
+S7>K7>fact1 a+b: no fit in 12 tries NG
+S7>K7>fact1 a*b: no fit in 12 tries NG
+S7>K7>fact1 |a-b|: no fit in 12 tries NG
+S7>K7>fact1 a+b+1: no fit in 12 tries NG
+S7>K7>fact1 a+b-1: no fit in 12 tries NG
+S7>K7>fact1 a*b+1: no fit in 12 tries NG
+S7>K7>fact1 a*b-1: no fit in 12 tries NG
+S7>K7>fact1 a-b: no fit in 12 tries NG
+S7>K7>fact1 b-a: no fit in 12 tries NG
+S7>K7>fact1 max mod min: no fit in 12 tries NG
+S7>fact0 b-a: no fit in 30 tries NG
+S7>fact0 max mod min Г=2,Ж=7: fits OK
+S7>fact0 max mod min Г=3,Ж=6: fits OK
+S7>fact0 max mod min Г=6,Ж=3: fits OK
+S7>fact0 max mod min Г=7,Ж=2: fits OK
+S7>K8>fact1 a+b: no fit in 12 tries NG
+S7>K8>fact1 a*b: no fit in 12 tries NG
+S7>K8>fact1 |a-b|: no fit in 12 tries NG
+S7>K8>fact1 a+b+1: no fit in 12 tries NG
+S7>K8>fact1 a+b-1: no fit in 12 tries NG
+S7>K8>fact1 a*b+1: no fit in 12 tries NG
+S7>K8>fact1 a*b-1: no fit in 12 tries NG
+S7>K8>fact1 a-b: no fit in 12 tries NG
+S7>K8>fact1 b-a: no fit in 12 tries NG
+S7>K8>fact1 max mod min: no fit in 12 tries NG
+S7>K9>fact1 a+b: no fit in 12 tries NG
+S7>K9>fact1 a*b: no fit in 12 tries NG
+S7>K9>fact1 |a-b|: no fit in 12 tries NG
+S7>K9>fact1 a+b+1: no fit in 12 tries NG
+S7>K9>fact1 a+b-1: no fit in 12 tries NG
+S7>K9>fact1 a*b+1: no fit in 12 tries NG
+S7>K9>fact1 a*b-1: no fit in 12 tries NG
+S7>K9>fact1 a-b: no fit in 12 tries NG
+S7>K9>fact1 b-a: no fit in 12 tries NG
+S7>K9>fact1 max mod min: no fit in 12 tries NG
+S7>K10>fact1 a+b: no fit in 12 tries NG
+S7>K10>fact1 a*b: no fit in 12 tries NG
+S7>K10>fact1 |a-b|: no fit in 12 tries NG
+S7>K10>fact1 a+b+1: no fit in 12 tries NG
+S7>K10>fact1 a+b-1: no fit in 12 tries NG
+S7>K10>fact1 a*b+1: no fit in 12 tries NG
+S7>K10>fact1 a*b-1: no fit in 12 tries NG
+S7>K10>fact1 a-b: no fit in 12 tries NG
+S7>K10>fact1 b-a: no fit in 12 tries NG
+S7>K10>fact1 max mod min: no fit in 12 tries NG
+S7>K11>fact1 a+b: no fit in 12 tries NG
+S7>K11>fact1 a*b: no fit in 12 tries NG
+S7>K11>fact1 |a-b|: no fit in 12 tries NG
+S7>K11>fact1 a+b+1: no fit in 12 tries NG
+S7>K11>fact1 a+b-1: no fit in 12 tries NG
+S7>K11>fact1 a*b+1: no fit in 12 tries NG
+S7>K11>fact1 a*b-1: no fit in 12 tries NG
+S7>K11>fact1 a-b: no fit in 12 tries NG
+S7>K11>fact1 b-a: no fit in 12 tries NG
+S7>K11>fact1 max mod min: no fit in 12 tries NG
+S8>
+S8>fact0 a+b: no fit in 30 tries NG
+S8>fact0 a*b: no fit in 30 tries NG
+S8>fact0 |a-b|: no fit in 30 tries NG
+S8>fact0 a+b+1: no fit in 30 tries NG
+S8>fact0 a+b-1: no fit in 30 tries NG
+S8>fact0 a*b+1: no fit in 30 tries NG
+S8>fact0 a*b-1: no fit in 30 tries NG
+S8>fact0 a-b: no fit in 30 tries NG
+S8>fact0 b-a: no fit in 30 tries NG
+S8>fact0 max mod min: no fit in 30 tries NG
+
+Query op |a-b|; inverse remap: Б->:
+I will now return the answer in \boxed{}
+The answer in \boxed{–} is \boxed{:}

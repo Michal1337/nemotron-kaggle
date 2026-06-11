@@ -1,0 +1,64 @@
+We infer the transformation rule from the facts by bounded rule-based trial.
+I will put my final answer inside \boxed{}.
+
+remap(pos2 is op):
+fact0【!>+^$】=【:`】
+  !Б >Г +op ^Д $Ж  =  :И `Л  ->  БГ【+】ДЖ = ИЛ
+  r.len=2 sym=[Б,Г,Д,Ж,И,Л]
+fact1【\^*::】=【^!\!】
+  \М ^Д *op :И :И  =  ^Д !Б \М !Б  ->  МД【*】ИИ = ДБМБ
+  r.len=4 sym=[Б,Д,И,М]
+fact2【$^-!$】=【-<】
+  $Ж ^Д -op !Б $Ж  =  sign <П  ->  ЖД【-】БЖ = -П
+  r.len=1 neg sym=[Б,Д,Ж,П]
+Query【>\*:!】
+  >Г \М *op :И !Б  ->  ГМ【*】ИБ
+
+narrowing:
+【*】 facts r.len=4 -> 《a*b,a*b+1,a*b-1》
+【+】 facts r.len=2 -> 《a+b,a*b,|a-b|,a+b+1,a+b-1,a*b+1,a*b-1,a-b,b-a,max mod min》
+【-】 facts r.len=1 -> 《a-b,b-a,-|a-b|》
+pre: 《standard,swap》 - standard first, swap only if standard yields nothing
+
+anchor: fact1 (most constrained, ops 《a*b,a*b+1,a*b-1》)
+standard: pattern УХ?ЦЦ=ХЧУЧ -> 2 candidates:
+  63*55-1=3464 ->R0: Д3 Б4 И5 М6
+  74*55=4070 ->R1: Б0 Д4 И5 М7
+
+R0>
+R0>fact2 a-b: no fit in 30 tries NG
+R0>fact2 b-a: no fit in 30 tries NG
+R0>fact2 -|a-b|: no fit in 30 tries NG
+R1>
+R1>fact2 a-b: no fit in 30 tries NG
+R1>fact2 b-a: no fit in 30 tries NG
+R1>fact2 -|a-b|: no fit in 30 tries NG
+no standard reading completes - try swap
+swap (operands+result digit-reversed): pattern УХ?ЦЦ=ХЧУЧ -> 2 candidates:
+  42*77=3234 ->S0: М2 Б3 Д4 И7
+  84*77=6468 ->S1: М4 Б6 И7 Д8
+
+S0>
+S0>fact2 a-b Ж=5,П=8: fits OK
+S0>K0>fact0 a+b Г=1,Л=6: fits OK
+S0>K0>M0> complete: query 21?37 via a*b = 777 -> :::
+S0>K0>fact0 a*b: no fit in 12 tries NG
+S0>K0>fact0 |a-b|: no fit in 12 tries NG
+S0>K0>fact0 a+b+1: no fit in 12 tries NG
+S0>K0>fact0 a+b-1: no fit in 12 tries NG
+S0>K0>fact0 a*b+1: no fit in 12 tries NG
+S0>K0>fact0 a*b-1: no fit in 12 tries NG
+S0>K0>fact0 a-b: no fit in 12 tries NG
+S0>K0>fact0 b-a: no fit in 12 tries NG
+S0>K0>fact0 max mod min: no fit in 12 tries NG
+S0>fact2 b-a: no fit in 30 tries NG
+S0>fact2 -|a-b| Ж=5,П=8: fits OK
+S0>same state as S0>K0 - skip
+S1>
+S1>fact2 a-b: no fit in 30 tries NG
+S1>fact2 b-a: no fit in 30 tries NG
+S1>fact2 -|a-b|: no fit in 30 tries NG
+
+Query op a*b; inverse remap: И->:
+I will now return the answer in \boxed{}
+The answer in \boxed{–} is \boxed{:::}

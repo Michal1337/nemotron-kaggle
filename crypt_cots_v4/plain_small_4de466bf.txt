@@ -1,0 +1,40 @@
+We infer the transformation rule from the facts by bounded rule-based trial.
+I will put my final answer inside \boxed{}.
+
+remap(pos2 is op):
+fact0【<$&^>】=【@@<】
+  <Б $Г &op ^Д >Ж  =  @И @И <Б  ->  БГ【&】ДЖ = ИИБ
+  r.len=3 sym=[Б,Г,Д,Ж,И]
+fact1【<^|<@】=【@$$^】
+  <Б ^Д |op <Б @И  =  @И $Г $Г ^Д  ->  БД【|】БИ = ИГГД
+  r.len=4 sym=[Б,Г,Д,И]
+fact2【/[&:/】=【@::】
+  /Л [М &op :П /Л  =  @И :П :П  ->  ЛМ【&】ПЛ = ИПП
+  r.len=3 sym=[И,Л,М,П]
+Query【@>&</】
+  @И >Ж &op <Б /Л  ->  ИЖ【&】БЛ
+
+narrowing:
+【&】 facts r.len=3,3 -> 《a+b,a*b,a+b+1,a+b-1,a*b+1,a*b-1》
+【|】 facts r.len=4 -> 《a*b,a*b+1,a*b-1》
+pre: 《standard,swap》 - standard first, swap only if standard yields nothing
+
+anchor: fact1 (most constrained, ops 《a*b,a*b+1,a*b-1》)
+standard: pattern УХ?УЦ=ЦЧЧХ -> 1 candidates:
+  46*41=1886 ->R0: И1 Б4 Д6 Г8
+
+R0>
+R0>fact0 a+b: no fit in 6 tries NG
+R0>fact0 a*b: no fit in 6 tries NG
+R0>fact0 a+b+1 Ж=5: fits OK
+R0>K0>fact2 a+b+1: no fit in 60 tries NG
+R0>fact0 a+b-1 Ж=7: fits OK
+R0>K1>fact2 a+b-1 Л=9,М=2,П=0: fits OK
+R0>K1>fact2 a+b-1 Л=9,М=5,П=3: fits OK
+R0>K1>M1> complete: query 17?49 via a+b-1 = 65 -> ^[
+R0>fact0 a*b+1: no fit in 6 tries NG
+R0>fact0 a*b-1: no fit in 6 tries NG
+
+Query op a+b-1; inverse remap: Д->^ М->[
+I will now return the answer in \boxed{}
+The answer in \boxed{–} is \boxed{^[}

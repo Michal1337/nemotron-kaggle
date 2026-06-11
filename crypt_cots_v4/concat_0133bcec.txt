@@ -1,0 +1,29 @@
+We infer the transformation rule from the facts by bounded rule-based trial.
+I will put my final answer inside \boxed{}.
+
+remap(pos2 is op):
+fact0【%|*"|】=【%|"|】
+  %Б |Г *op "Д |Г  =  %Б |Г "Д |Г  ->  БГ【*】ДГ = БГДГ
+  r.len=4 sym=[Б,Г,Д]
+fact1【\(*[^】=【\([^】
+  \Ж (И *op [Л ^М  =  \Ж (И [Л ^М  ->  ЖИ【*】ЛМ = ЖИЛМ
+  r.len=4 sym=[Ж,И,Л,М]
+fact2【(%+[@】=【(%[@】
+  (И %Б +op [Л @П  =  (И %Б [Л @П  ->  ИБ【+】ЛП = ИБЛП
+  r.len=4 sym=[Б,И,Л,П]
+fact3【|[*([】=【|[([】
+  |Г [Л *op (И [Л  =  |Г [Л (И [Л  ->  ГЛ【*】ИЛ = ГЛИЛ
+  r.len=4 sym=[Г,И,Л]
+fact4【[^-[(】=【-^】
+  [Л ^М -op [Л (И  =  sign ^М  ->  ЛМ【-】ЛИ = -М
+  r.len=1 neg sym=[И,Л,М]
+Query【\(*[#】
+  \Ж (И *op [Л #Т  ->  ЖИ【*】ЛТ
+
+concat check【*】: every fact's result is its operand symbols rearranged (concat_fwd) - no digit code needed:
+  【%|*"|】=【%|"|】 ok
+  【\(*[^】=【\([^】 ok
+  【|[*([】=【|[([】 ok
+apply to Query【\(*[#】: \([#
+I will now return the answer in \boxed{}
+The answer in \boxed{–} is \boxed{\([#}
