@@ -79,6 +79,147 @@ def encode_output(v, op, oc, mode, enc):
     return (oc + body) if sign else body
 
 
+def pattern_instantiations(pattern, mode):
+    """All (av, bv, op) whose DISPLAY form (operands+result digit-reversed in
+    rev_both) instantiates the canonical anchor pattern, e.g. 'УХ?ЦУ=ЧХЧЧ'.
+    Equality classes + global digit-distinctness; labeling-independent."""
+    left, res = pattern.split("=")
+    psym = left[0:2] + left[3:5] + res
+    rl = len(res)
+    out = []
+    for av in range(100):
+        for bv in range(100):
+            for op in MUL_FAM:
+                v = synth_op_value(op, av, bv)
+                if v is None or v < 0:
+                    continue
+                a_s, b_s = f"{av:02d}", f"{bv:02d}"
+                r_s = str(v).zfill(rl)
+                if len(r_s) != rl:
+                    continue
+                if mode == "rev_both":
+                    a_s, b_s, r_s = a_s[::-1], b_s[::-1], r_s[::-1]
+                disp = a_s + b_s + r_s
+                asg = {}
+                ok = True
+                for c, d in zip(psym, disp):
+                    if asg.get(c, d) != d:
+                        ok = False
+                        break
+                    asg[c] = d
+                if not ok or len(set(asg.values())) != len(asg):
+                    continue
+                out.append((av, bv, op, disp))
+    return out
+
+
+def gen_pattern_candidate(pattern, j):
+    """A problem whose anchor fact instantiates `pattern` (j-th attempt).
+    Mirrors gen_candidate's machinery for everything past the anchor."""
+    rng = random.Random(int(hashlib.md5(f"cryptpat-{pattern}-{j}".encode()).hexdigest(), 16))
+    mode = "standard" if j % 2 == 0 else "rev_both"
+    insts = pattern_instantiations(pattern, mode)
+    if not insts:
+        # some patterns are unreachable in one display mode - use the other
+        mode = "rev_both" if mode == "standard" else "standard"
+        insts = pattern_instantiations(pattern, mode)
+        if not insts:
+            return None
+    av, bv, aop, disp = insts[rng.randrange(len(insts))]
+
+    n_opc = wchoice(rng, N_OPC_W)
+    n_ex = max(wchoice(rng, N_EX_W), n_opc)
+    glyphs = rng.sample(GLYPHS, 10 + n_opc)
+    dig_glyphs, op_glyphs = glyphs[:10], glyphs[10:]
+    mapping = {g: d for d, g in enumerate(dig_glyphs)}
+    enc = {d: g for g, d in mapping.items()}
+
+    ops = {op_glyphs[0]: aop}
+    other_fams = [f for f in FAMS if f != MUL_FAM]
+    fams = rng.sample(other_fams, max(0, n_opc - 1))
+    for k, oc in enumerate(op_glyphs[1:]):
+        ops[oc] = rng.choice(fams[k])
+
+    seen_inputs = set()
+    # the anchor fact, straight from the pattern instantiation's display form
+    a_inp = enc[int(disp[0])] + enc[int(disp[1])] + op_glyphs[0] + \
+        enc[int(disp[2])] + enc[int(disp[3])]
+    a_out = "".join(enc[int(d)] for d in disp[4:])
+    seen_inputs.add(a_inp)
+    exs = [(a_inp, a_out)]
+
+    def make_example(oc):
+        op = ops[oc]
+        for _ in range(80):
+            a1, a2, b1, b2 = (rng.choice(dig_glyphs) for _ in range(4))
+            inp = a1 + a2 + oc + b1 + b2
+            if inp in seen_inputs:
+                continue
+            L = mapping[a1] * 10 + mapping[a2]
+            R = mapping[b1] * 10 + mapping[b2]
+            if mode == "rev_both":
+                L, R = S.rev2(L), S.rev2(R)
+            v = synth_op_value(op, L, R)
+            if v is None or (v < 0 and op not in SIGNED):
+                continue
+            if op == "neg_absdiff" and v == 0 and (a1 != b1 or a2 != b2):
+                continue
+            out = encode_output(v, op, oc, mode, enc)
+            seen_inputs.add(inp)
+            return (inp, out)
+        return None
+
+    order = list(op_glyphs[1:]) + [rng.choice(op_glyphs) for _ in range(n_ex - n_opc)]
+    rng.shuffle(order)
+    for oc in order:
+        ex = make_example(oc)
+        if ex is None:
+            return None
+        exs.append(ex)
+    rng.shuffle(exs)
+
+    for _ in range(40):
+        oc = rng.choice(op_glyphs)
+        op = ops[oc]
+        a1, a2, b1, b2 = (rng.choice(dig_glyphs) for _ in range(4))
+        q = a1 + a2 + oc + b1 + b2
+        if q in seen_inputs:
+            continue
+        L = mapping[a1] * 10 + mapping[a2]
+        R = mapping[b1] * 10 + mapping[b2]
+        if mode == "rev_both":
+            L, R = S.rev2(L), S.rev2(R)
+        v = synth_op_value(op, L, R)
+        if v is None or (v < 0 and op not in SIGNED):
+            continue
+        gold = encode_output(v, op, oc, mode, enc)
+        if not gold:
+            continue
+        examples = [{"input_value": i_, "output_value": o_} for i_, o_ in exs]
+        prompt = PROMPT.format(exs="\n".join(f"{i_} = {o_}" for i_, o_ in exs), q=q)
+        pid = "synp_" + hashlib.md5((str(exs) + q).encode()).hexdigest()[:10]
+        return {"id": pid, "category": "cryptarithm_deduce", "prompt": prompt,
+                "answer": gold, "examples": examples, "question": q,
+                "_meta": {"mode": mode, "ops": ops, "n_ex": n_ex, "pattern": pattern}}
+    return None
+
+
+def pattern_worker(task):
+    pattern, j = task
+    prob = gen_pattern_candidate(pattern, j)
+    if prob is None:
+        return None
+    r = classify(prob)
+    if r is None:
+        return None
+    tail, tok, cot = r
+    if tail == "concat":
+        return None  # pattern rows must exercise the anchor list, not the gate
+    prob["_meta"]["tail"] = tail
+    prob["_meta"]["tok"] = tok
+    return (pattern, prob)
+
+
 def gen_candidate(i):
     rng = random.Random(int(hashlib.md5(f"cryptsyna-{i}".encode()).hexdigest(), 16))
     mode = "standard" if i % 2 == 0 else "rev_both"
@@ -191,6 +332,7 @@ def classify(prob):
         return None
     i = cot.rfind("boxed{")
     j = cot.rfind("}")
+    # rfind both ways: glyph alphabets include { } so answers may contain them
     if not (0 <= i < j) or cot[i + 6:j] != prob["answer"]:
         return None
     tok = tok_count(cot)
@@ -230,17 +372,43 @@ def _init_worker():
 
 def main():
     import multiprocessing as mp
-    out_path = sys.argv[1] if len(sys.argv) > 1 else "synth_crypt_anchor.jsonl"
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    out_path = args[0] if args else "synth_crypt_anchor.jsonl"
     quotas = dict(QUOTAS)
-    if len(sys.argv) > 2:
+    if len(args) > 1:
         quotas = {}
-        for kv in sys.argv[2].split(","):
+        for kv in args[1].split(","):
             k, v = kv.split("=")
             quotas[k] = int(v)
     globals()["QUOTAS"].clear()
     globals()["QUOTAS"].update(quotas)
+
+    # pattern-targeted phase: --patterns FILE --per-pattern N
+    pat_rows = []
+    if "--patterns" in sys.argv:
+        pat_file = sys.argv[sys.argv.index("--patterns") + 1]
+        per_pat = int(sys.argv[sys.argv.index("--per-pattern") + 1]) \
+            if "--per-pattern" in sys.argv else 12
+        patterns = json.load(open(pat_file, encoding="utf-8"))
+        got = {p: 0 for p in patterns}
+        tasks = [(p, j) for p in patterns for j in range(per_pat * 4)]
+        with mp.Pool(16, initializer=_init_worker) as pool:
+            for r in pool.imap_unordered(pattern_worker, tasks, chunksize=4):
+                if r is None:
+                    continue
+                pattern, prob = r
+                if got[pattern] >= per_pat:
+                    continue
+                got[pattern] += 1
+                pat_rows.append(prob)
+        short = {p: n for p, n in got.items() if n < per_pat}
+        print(f"pattern phase: {len(pat_rows)} rows over {len(patterns)} patterns; "
+              f"short patterns: {len(short)}"
+              + (f" (worst: {sorted(short.items(), key=lambda kv: kv[1])[:5]})" if short else ""),
+              flush=True)
+
     filled = {k: [] for k in QUOTAS}
-    seen = set()
+    seen = {p["id"] for p in pat_rows}
     idx = 0
     BATCH = 400
     with mp.Pool(10, initializer=_init_worker) as pool:
@@ -260,11 +428,14 @@ def main():
             print(f"idx={idx} " + " ".join(f"{k}={len(v)}/{QUOTAS[k]}"
                                            for k, v in filled.items()), flush=True)
     with open(out_path, "w", encoding="utf-8") as f:
+        for prob in pat_rows:
+            f.write(json.dumps(prob) + "\n")
         for k in filled:
             for prob in filled[k]:
                 f.write(json.dumps(prob) + "\n")
-    total = sum(len(v) for v in filled.values())
-    print(f"wrote {total} -> {out_path}")
+    total = len(pat_rows) + sum(len(v) for v in filled.values())
+    print(f"wrote {total} ({len(pat_rows)} pattern-targeted) -> {out_path}")
+    print("SYNTH_ANCHOR_DONE")
 
 
 if __name__ == "__main__":
