@@ -508,13 +508,38 @@ def main() -> None:
     gc.collect()
     torch.cuda.empty_cache()
     device = next(model.parameters()).device
+    # Canonical trainable-param set, IDENTICAL across ranks. Unsloth's MoE
+    # lm_head-LoRA handling can leave the two ranks with different trainable
+    # tensors (the broadcast loop then desyncs and the NCCL watchdog kills the
+    # job after 10 min). all_gather each rank's trainable names (ONE matched
+    # collective, before any per-param loop), intersect, drop the divergent
+    # ones from training on every rank, so all later collectives (broadcast +
+    # grad all_reduce) iterate an identical, name-sorted set.
+    canon_names = sorted(n for n, p in model.named_parameters() if p.requires_grad)
+    if IS_DIST:
+        gathered: list = [None] * WORLD_SIZE
+        dist.all_gather_object(gathered, set(canon_names))
+        common = set.intersection(*[set(g) for g in gathered])
+        union = set.union(*[set(g) for g in gathered])
+        divergent = union - common
+        if divergent:
+            if IS_MAIN:
+                print(f"[DDP] trainable-set MISMATCH: union={len(union)} common={len(common)} "
+                      f"divergent={len(divergent)} -> dropping divergent from training")
+                for n in sorted(divergent):
+                    on = [r for r in range(WORLD_SIZE) if n in gathered[r]]
+                    print(f"   drop {n}  (present on ranks {on})")
+            for n, p in model.named_parameters():
+                if n in divergent:
+                    p.requires_grad_(False)
+            canon_names = sorted(common)
+    _named = dict(model.named_parameters())
     if IS_DIST:
         # Guarantee identical starting LoRA weights on all ranks (init may not be
         # bit-deterministic across processes), then grads keep them in sync.
-        for p in model.parameters():
-            if p.requires_grad:
-                dist.broadcast(p.data, src=0)
-        print(f"[rank {RANK}] broadcast {sum(p.requires_grad for p in model.parameters())} trainable tensors from rank 0")
+        for n in canon_names:
+            dist.broadcast(_named[n].data, src=0)
+        print(f"[rank {RANK}] broadcast {len(canon_names)} trainable tensors from rank 0")
     optimizer: torch.optim.AdamW | None = None
 
     # Unroll enough epochs to cover the requested --num-steps. Each epoch gets
@@ -624,9 +649,16 @@ def main() -> None:
             # GLOBAL n_accum) to reproduce the full-batch gradient; SUM loss/weight
             # sums for the reported loss. Done BEFORE _tie_grads so the expert-tie
             # operates on the globally-reduced gradient.
-            for p in model.parameters():
-                if p.requires_grad and p.grad is not None:
-                    dist.all_reduce(p.grad, op=dist.ReduceOp.SUM)
+            # Iterate the CANONICAL name-sorted set and zero-fill missing grads:
+            # with sparse MoE routing a param may have grad on one rank but None
+            # on another (different experts fire on each rank's data shard), so a
+            # `p.grad is not None` filter would all_reduce different counts per
+            # rank and desync. Zero-fill keeps the collective sequence identical.
+            for n in canon_names:
+                p = _named[n]
+                if p.grad is None:
+                    p.grad = torch.zeros_like(p)
+                dist.all_reduce(p.grad, op=dist.ReduceOp.SUM)
             lw = torch.tensor([total_loss_sum, total_weight_sum], device=device)
             dist.all_reduce(lw, op=dist.ReduceOp.SUM)
             total_loss_sum, total_weight_sum = lw[0].item(), lw[1].item()
