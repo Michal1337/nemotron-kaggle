@@ -108,7 +108,7 @@ def classify(prob):
     boxed = cot.rsplit("boxed{", 1)[-1].split("}")[0]
     if boxed != prob["answer"]:
         return None
-    return "override" if "Cross-check (whole-word)" in cot else "base"
+    return "override" if "Disagrees with the per-bit output" in cot else "base"
 
 
 def find_override_query(prob, prog, rng):
@@ -120,9 +120,9 @@ def find_override_query(prob, prog, rng):
     cap = {}
     orig = Z._emit_apply
 
-    def hook(lines, qb, best):
+    def hook(lines, qb, best, box=True):
         cap["best"] = list(best)
-        return orig(lines, qb, best)
+        return orig(lines, qb, best, box)
 
     p = Problem(id=prob["id"], category="bit_manipulation",
                 examples=[Example(e["input_value"], e["output_value"]) for e in prob["examples"]],

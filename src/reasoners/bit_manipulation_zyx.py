@@ -339,8 +339,9 @@ def _evaluate_rule(bits: str, rule: RuleCandidate) -> str:
 
 
 def _emit_apply(
-    lines: List[str], question_bits: str, vector: List[RuleCandidate]
-) -> None:
+    lines: List[str], question_bits: str, vector: List[RuleCandidate],
+    box: bool = True,
+) -> str:
     lines.append(f"Applying to {question_bits}")
     lines.append("Input")
     for i, bit in enumerate(question_bits):
@@ -388,9 +389,11 @@ def _emit_apply(
         lines.append(f"{i} {rule.expr} = {base}({a},NOT({b})) = {base}({a},{nb}) = {result}")
         answer_bits.append(result)
 
-    lines.append("")
-    lines.append("I will now return the answer in \\boxed{}")
-    lines.append(f"The answer in \\boxed{{–}} is \\boxed{{{''.join(answer_bits)}}}")
+    if box:
+        lines.append("")
+        lines.append("I will now return the answer in \\boxed{}")
+        lines.append(f"The answer in \\boxed{{–}} is \\boxed{{{''.join(answer_bits)}}}")
+    return "".join(answer_bits)
 
 
 def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
@@ -1006,17 +1009,20 @@ def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
     if all(r.is_default for r in best):
         return None
 
-    # Whole-word coverage extension: the stride-based selection can pick a rule
-    # that fits the examples yet is wrong on the query (a spurious example-fit).
-    # The whole-word solver (ROT/SHL/SHR, up to 3 transforms, example-only) returns
-    # an answer only under global agreement WITHIN ITS CLASS. That unanimity is
-    # class-relative, not truth-guaranteed: 3/1602 real pids have a spuriously
-    # unique wrong program (audit 2026-06-10); the external gold keep/drop filter
-    # is what drops them. If the agreed answer disagrees with the stride
-    # selection, we re-render so Selected/Applying are correct and self-consistent.
-    best_answer = "".join(_evaluate_rule(question_bits, r) for r in best)
+    # Whole-word check (uniform render, eval forensics 2026-06-11): the old
+    # CONDITIONAL override branch trained to p~0 - 13/18 val override gens were
+    # token-identical to the gold CoT up to the branch and then skipped it
+    # (the branch condition depended on a latent program search absent from
+    # the CoT prefix), and the 5 that fired it hallucinated the program; the
+    # rare format also bled into 3 non-override CoTs. Every CoT now ends with
+    # the SAME Whole-word check section: program search stated -> found program
+    # verified on every example -> applied to the question -> agree/disagree
+    # verdict against the per-bit output that is already printed above. No
+    # branch decides whether the section exists, and the verdict compares two
+    # visible strings. The whole-word solver's unanimity is class-relative,
+    # not truth-guaranteed (3/1602 spuriously-unique-wrong, audit 2026-06-10);
+    # the external gold keep/drop filter is what drops those.
     from reasoners.bitword_solver import (
-        solve as _ww_solve,
         solve_program,
         eval_program,
         program_name,
@@ -1024,60 +1030,62 @@ def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
     )
 
     ex_pairs = list(zip(inputs, outputs))
-    ww_answer = _ww_solve(ex_pairs, question_bits)
-    if ww_answer is not None and ww_answer != best_answer:
-        # Unified override (audit 2026-06-11): the old per-bit "Reselect"
-        # render trained FLAT at 23% vs 95% base - a model cannot execute an
-        # asserted rule-swap. Every override now renders the whole-word
-        # program EXPLICITLY: found program -> checked on every example ->
-        # applied to the question term-by-term. Also shorter than the old
-        # reselect path (skips the duplicate Selected/Output sections).
-        ww2, prog = solve_program(ex_pairs, question_bits)
-        if ww2 == ww_answer and prog is not None:
-            terms = prog[0::2]
-            lines.append("")
-            lines.append("Cross-check (whole-word)")
-            lines.append(
-                "Check whole-word programs of up to 3 ROT/SHL/SHR terms "
-                "(each optionally negated) combined with AND/OR/XOR; the "
-                "agreeing program disagrees with the per-bit selection above, "
-                "so that selection is a spurious fit - use the program."
-            )
-            lines.append(f"Found {program_name(prog)}")
-            lines.append("Check on examples")
-            ok_all = True
-            for inp, out in ex_pairs:
-                words, res = eval_program(inp, prog)
-                parts = " ".join(
-                    f"{term_name(t)}={w}" for t, w in zip(terms, words)
-                )
-                flag = "yes" if res == out else "no"
-                lines.append(f"{inp} {parts} -> {res} vs {out} {flag}")
-                if res != out:
-                    ok_all = False
-            if ok_all:
-                lines.append(
-                    "All example-consistent programs agree on the question."
-                )
-                lines.append("")
-                lines.append(f"Applying to {question_bits}")
-                words, res = eval_program(question_bits, prog)
-                for t, w in zip(terms, words):
-                    lines.append(f"{term_name(t)} = {w}")
-                lines.append(f"Combined = {res}")
-                lines.append("")
-                lines.append("I will now return the answer in \\boxed{}")
-                lines.append(
-                    f"The answer in \\boxed{{–}} is \\boxed{{{res}}}"
-                )
-                return "\n".join(lines)
+    ww2, prog = solve_program(ex_pairs, question_bits)
 
     lines.append("Selected")
     for i, rule in enumerate(best):
         lines.append(f"{i} {rule.expr}")
 
-    # 8) Apply to question.
+    # 8) Apply to question (per-bit output, not yet boxed).
     lines.append("")
-    _emit_apply(lines, question_bits, best)
+    best_answer = _emit_apply(lines, question_bits, best, box=False)
 
+    # 9) Whole-word check (always present).
+    lines.append("")
+    lines.append("Whole-word check")
+    lines.append(
+        "Search programs of up to 3 ROT/SHL/SHR terms (each optionally NOT) "
+        "combined with AND/OR/XOR that reproduce every example output."
+    )
+    final = best_answer
+    if prog is not None:
+        terms = prog[0::2]
+        lines.append(f"Found {program_name(prog)}")
+        lines.append("Check on examples")
+        ok_all = True
+        for inp, out in ex_pairs:
+            words, res = eval_program(inp, prog)
+            parts = " ".join(f"{term_name(t)}={w}" for t, w in zip(terms, words))
+            flag = "yes" if res == out else "no"
+            lines.append(f"{inp} {parts} -> {res} vs {out} {flag}")
+            if res != out:
+                ok_all = False
+        if ok_all:
+            words, res = eval_program(question_bits, prog)
+            lines.append(f"Apply to {question_bits}")
+            for t, w in zip(terms, words):
+                lines.append(f"{term_name(t)} = {w}")
+            lines.append(f"Combined = {res}")
+            if res == best_answer:
+                lines.append("Matches the per-bit output.")
+            else:
+                lines.append(
+                    "Disagrees with the per-bit output - the diverging per-bit "
+                    "picks are spurious example-fits; the program is "
+                    "example-exact, use it."
+                )
+                final = res
+        else:
+            # defensive only: solve_program verifies on examples by construction
+            lines.append("Program fails an example - keep the per-bit output.")
+    else:
+        lines.append(
+            "No agreeing program: nothing of up to 3 terms fits every example, "
+            "or the fitting programs disagree on the question. Keep the "
+            "per-bit output."
+        )
+
+    lines.append("")
+    lines.append("I will now return the answer in \\boxed{}")
+    lines.append(f"The answer in \\boxed{{–}} is \\boxed{{{final}}}")
     return "\n".join(lines)
