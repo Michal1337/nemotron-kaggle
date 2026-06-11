@@ -1051,13 +1051,24 @@ def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
     if prog is not None:
         terms = prog[0::2]
         lines.append(f"Found {program_name(prog)}")
+        # First example shows the full term-by-term breakdown (teaches the
+        # mechanic once); the rest are compact - for an example-exact program
+        # res==out on every example, so "inp -> res vs out yes" is determined
+        # by the prompt and the per-term derivation there is not load-bearing.
+        # The Apply-to-question block below keeps the full breakdown (that is
+        # where the answer is actually derived). Eval forensics 2026-06-11:
+        # the full per-example breakdown on 7-10 examples pushed 343 reals over
+        # the 7680 cap with no learnability benefit on kept CoTs.
         lines.append("Check on examples")
         ok_all = True
-        for inp, out in ex_pairs:
+        for k, (inp, out) in enumerate(ex_pairs):
             words, res = eval_program(inp, prog)
-            parts = " ".join(f"{term_name(t)}={w}" for t, w in zip(terms, words))
             flag = "yes" if res == out else "no"
-            lines.append(f"{inp} {parts} -> {res} vs {out} {flag}")
+            if k == 0:
+                parts = " ".join(f"{term_name(t)}={w}" for t, w in zip(terms, words))
+                lines.append(f"{inp} {parts} -> {res} vs {out} {flag}")
+            else:
+                lines.append(f"{inp} -> {res} vs {out} {flag}")
             if res != out:
                 ok_all = False
         if ok_all:
