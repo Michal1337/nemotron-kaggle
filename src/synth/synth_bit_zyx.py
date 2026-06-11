@@ -12,8 +12,11 @@ CoTs and fills shape quotas:
     base      700   (stride agrees; word-class problems still in-distribution)
 
 Deterministic hash-seeded, no clock/global RNG. Token safety: CoTs capped at
-CHAR_CAP=8800 chars (~6800 real tokens; the budget is tight - real corpus max
-was 7651/7680) and the build's real-tokenizer filter remains the final gate.
+CHAR_CAP=9900 chars (~7560 real tokens at the measured 1.31 chars/tok; the
+8800 first guess structurally rejected override CoTs, p50 ~9.8k chars) and
+the build's real-tokenizer filter remains the final gate. Override yield:
+naturally ~rare; the adversarial query selection (stride pick is
+query-independent -> scan for a disagreeing query) lifts it to ~40%.
 
 Output: jsonl {id, category, prompt, answer, examples, question, _meta}
 compatible with tv_step4_build synth ingestion.
@@ -37,7 +40,11 @@ PROMPT = ("In Alice's Wonderland, a secret bit manipulation rule transforms 8-bi
 KINDS = ["ROT", "SHL", "SHR"]
 OPS = ["AND", "OR", "XOR"]
 N_EX = 8
-CHAR_CAP = 8800
+# real bit tokenization runs ~1.31 chars/tok -> 7680 tok ~ 10060 chars.
+# 8800 was over-tight and structurally rejected override CoTs (p50 ~9.8k
+# chars); 9900 ~ 7560 tok leaves margin and the build's real-tokenizer
+# filter remains the final gate.
+CHAR_CAP = 9900
 QUOTAS = {"override": 500, "base": 700}
 
 
@@ -54,9 +61,13 @@ def gen_program(rng):
     return tuple(prog)
 
 
+_PROG_CACHE = {}
+
+
 def gen_candidate(i):
     rng = random.Random(int(hashlib.md5(f"bitsynz-{i}".encode()).hexdigest(), 16))
     prog = gen_program(rng)
+    _PROG_CACHE[i] = prog
     words = set()
     guard = 0
     while len(words) < N_EX + 1 and guard < 200:
@@ -100,11 +111,75 @@ def classify(prob):
     return "override" if "Cross-check (whole-word)" in cot else "base"
 
 
+def find_override_query(prob, prog, rng):
+    """Adversarial query selection: the stride pick is query-INDEPENDENT, so
+    capture it once (hooking _emit_apply during a probe narration), then scan
+    unseen queries for one where the unanimous word answer disagrees with the
+    stride answer AND equals the program's answer (the keep condition)."""
+    from reasoners.bitword_solver import solve as ww_solve
+    cap = {}
+    orig = Z._emit_apply
+
+    def hook(lines, qb, best):
+        cap["best"] = list(best)
+        return orig(lines, qb, best)
+
+    p = Problem(id=prob["id"], category="bit_manipulation",
+                examples=[Example(e["input_value"], e["output_value"]) for e in prob["examples"]],
+                question=prob["question"], answer=prob["answer"])
+    Z._emit_apply = hook
+    try:
+        Z.reasoning_bit_manipulation(p)
+    except Exception:
+        return None
+    finally:
+        Z._emit_apply = orig
+    best = cap.get("best")
+    if not best:
+        return None
+    seen = {e["input_value"] for e in prob["examples"]} | {prob["question"]}
+    ex_pairs = [(e["input_value"], e["output_value"]) for e in prob["examples"]]
+    cands = [format(x, "08b") for x in rng.sample(range(256), 64)]
+    for q in cands:
+        if q in seen:
+            continue
+        try:
+            stride = "".join(Z._evaluate_rule(q, r) for r in best)
+            _, want = eval_program(q, prog)
+            if stride == want:
+                continue
+            ww = ww_solve(ex_pairs, q)
+            if ww is not None and ww == want:
+                return q, want
+        except Exception:
+            continue
+    return None
+
+
 def worker(i):
     prob = gen_candidate(i)
     if prob is None:
         return None
     shape = classify(prob)
+    if shape == "base":
+        # try to convert to an override by adversarial query choice
+        rng = random.Random(int(hashlib.md5(f"bitsynq-{i}".encode()).hexdigest(), 16))
+        prog = _PROG_CACHE.get(i)
+        if prog is not None:
+            r = find_override_query(prob, prog, rng)
+            if r is not None:
+                q, gold = r
+                prob = dict(prob)
+                prob["question"] = q
+                prob["answer"] = gold
+                prob["prompt"] = PROMPT.format(
+                    exs="\n".join(f'{e["input_value"]} -> {e["output_value"]}' for e in prob["examples"]), q=q)
+                prob["id"] = "synz_" + hashlib.md5((prob["prompt"]).encode()).hexdigest()[:10]
+                shape2 = classify(prob)
+                if shape2 == "override":
+                    prob["_meta"] = dict(prob["_meta"], shape="override", adversarial_q=True)
+                    return "override", prob
+                return None
     if shape is None:
         return None
     prob["_meta"]["shape"] = shape
