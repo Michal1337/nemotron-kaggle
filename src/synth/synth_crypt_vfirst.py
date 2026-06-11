@@ -25,6 +25,7 @@ src/corpus/crypt_vfirst_gates.py --generate.
 """
 import hashlib
 import json
+import os
 import random
 import sys
 
@@ -45,6 +46,10 @@ SIGNED = {"sub_signed", "rsub_signed", "neg_absdiff"}
 
 N_EX_W = [(3, 180), (4, 241), (5, 238)]
 N_OPC_W = [(1, 13), (2, 272), (3, 374)]
+if os.environ.get("SYNV_3OPC"):
+    # survivor-heavy mode: favor 3 op chars (more stage-1 combos -> more
+    # survivors; eval pids run survivor-count median ~12 vs synth default ~3)
+    N_OPC_W = [(2, 100), (3, 550)]
 
 QUOTAS = {"det": 1250, "agree": 700, "easy": 300, "concat": 150}
 
@@ -173,6 +178,8 @@ def classify(prob):
     est = TOK_OVERHEAD + len(cot) / CHARS_PER_TOK
     if "no digit code needed" in cot:
         tail = "concat"
+    elif "UNDERDETERMINED:" in cot:
+        tail = "under"
     elif "DETERMINED:" in cot:
         tail = "det"
     elif "resolved readings agree" in cot:
@@ -197,9 +204,10 @@ def worker(i):
     r = classify(prob)
     if r is None:
         return None
-    tail, est, _ = r
+    tail, est, cot = r
     prob["_meta"]["tail"] = tail
     prob["_meta"]["est_tok"] = round(est)
+    prob["_meta"]["n_survivors"] = cot.count(": survives")
     return bucket_of(tail, est), prob
 
 
@@ -210,6 +218,14 @@ def _init_worker():
 def main():
     import multiprocessing as mp
     out_path = sys.argv[1] if len(sys.argv) > 1 else "synth_crypt_vfirst.jsonl"
+    quotas = dict(QUOTAS)
+    if len(sys.argv) > 2:
+        quotas = {}
+        for kv in sys.argv[2].split(","):
+            k, v = kv.split("=")
+            quotas[k] = int(v)
+    globals()["QUOTAS"].clear()
+    globals()["QUOTAS"].update(quotas)
     filled = {k: [] for k in QUOTAS}
     seen = set()
     idx = 0

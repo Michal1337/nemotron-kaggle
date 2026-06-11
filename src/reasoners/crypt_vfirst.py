@@ -288,20 +288,28 @@ class Narrator:
         self.em.emit(f"{lab} {c}:{op}.{mtag}.e{k+1} units {A[1]}{_opsym(op)}{B[1]} ends {nat[-1]}: {sets}")
         return lab
 
-    # -------- P0
+    # -------- P0 (v2: interleaved rename - each glyph=letter pair is written
+    # at the moment of use; never a detached table applied across a block.
+    # The pilot proved 3B cannot apply a 10-13-entry substitution: full-P0
+    # fidelity 2.8%, and rewrites followed the model's own table in 5/106.)
+    def _pairs(self, raw):
+        full = {**self.opmap, **self.digmap}
+        return " ".join(f"{ch}{full[ch]}" for ch in raw)
+
     def p0(self):
         em = self.em
-        em.emit("Cryptarithm (each glyph = a distinct digit). Normalize: digits -> A..J "
-                "by first appearance, operators -> p/q/r; map back at the end.")
-        for g, L in self.opmap.items():
-            em.emit(f"  op {g!r} -> {L}")
-        for g, L in self.digmap.items():
-            em.emit(f"  {g!r} -> {L}")
+        full = {**self.opmap, **self.digmap}
+        em.emit("Cryptarithm (each glyph = a distinct digit 0-9). Rename glyph by glyph "
+                "as we read: digits get A..J in order of first appearance, operators get "
+                "p/q/r. Each pair below is glyph then letter; the letter string follows.")
+        rexs = [(e["input_value"], e["output_value"]) for e in self.raw["examples"]]
+        for k, ((rin, rout), (lin, lout)) in enumerate(zip(rexs, self.exs)):
+            em.emit(f"  e{k+1}: {rin} = {rout}")
+            em.emit(f"      {self._pairs(rin)}  =  {self._pairs(rout)}  ->  {lin} = {lout}")
+        rq = self.raw["question"]
+        em.emit(f"  query: {rq}")
+        em.emit(f"      {self._pairs(rq)}  ->  {self.q}")
         em.emit("Sign rule: an output starting with its own op letter is a negative result.")
-        em.emit("Rewritten:")
-        for k, (inp, out) in enumerate(self.exs):
-            em.emit(f"  e{k+1}: {inp} = {out}")
-        em.emit(f"  query: {self.q}")
         em.emit()
 
     # -------- P1
@@ -717,10 +725,13 @@ class Narrator:
             for sym2, d in domains.items():
                 if len(d) == 1:
                     inv[next(iter(d))] = sym2
+            if any(int(ch) not in inv for ch in s):
+                raise Abort
+            em.emit("  check every result digit has a pinned letter: "
+                    + " ".join(f"{ch}={inv[int(ch)]}" for ch in dict.fromkeys(s))
+                    + " - all pinned")
             enc = []
             for ch in s:
-                if int(ch) not in inv:
-                    raise Abort
                 enc.append(inv[int(ch)])
             sign = q[2] if (v is not None and v < 0) else ""
             em.emit(f"  encode: " + " ".join(f"{ch}={inv[int(ch)]}" for ch in s)
@@ -855,15 +866,17 @@ def _narrate(prob):
     em.mute = False
     chosen_i = next((i for i, (a, r, dead) in enumerate(pres) if r and a), None)
     results = []
+    em.emit()
+    em.emit("Attempt the surviving readings in the order listed; the first that "
+            "yields a unique query value is the reading we commit to.")
     for i, (ops, mode, domains) in enumerate(weak):
         name = _combo_name(ops, mode, nar.chars_order)
         pa, pr, pdead = pres[i]
         if pdead:
-            em.emit(f"{name}: contradiction during resolution - eliminated")
+            em.emit(f"Attempt {name}: resolution runs into a contradiction - eliminated")
             continue
         if chosen_i is not None and i == chosen_i:
-            em.emit()
-            em.emit(f"Resolve {name}:")
+            em.emit(f"Attempt {name}:")
             nar.snapshot(domains, note=f" {name}")
             work = {s: set(v) for s, v in domains.items()}
             try:
@@ -881,7 +894,22 @@ def _narrate(prob):
             narrate_certificate(nar, name, ops, mode, wit, wa if wa else "(not encodable)")
             results.append((ops, mode, pa, True, {s: {wit[s]} for s in wit}))
         else:
-            em.emit(f"{name}: stays open within bounds (no unique query value)")
+            # witnessed stall: show the blocking state when it is immediate
+            widths = []
+            for k, (inp, out) in enumerate(nar.exs):
+                op = ops[inp[2]]
+                if op in S.CONCAT:
+                    continue
+                unk = ex_unknowns(inp, out, domains)
+                if unk:
+                    widths.append((k + 1, nar._anchored_width(inp, out, op, mode, domains, unk)))
+            if widths and all(w > W_EXPAND for _, w in widths):
+                wtxt = " ".join(f"e{k}:{'>' if w > W_EXPAND else ''}{min(w, W_EXPAND + 1)}" for k, w in widths)
+                em.emit(f"Attempt {name}: candidate counts {wtxt} all exceed {W_EXPAND}; "
+                        f"no symbol narrow enough to split - stays open")
+            else:
+                em.emit(f"Attempt {name}: expansions narrow some symbols but no unique "
+                        f"query value emerges within bounds - stays open")
             results.append((ops, mode, None, False, domains))
         if em.over():
             raise Abort

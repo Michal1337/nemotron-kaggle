@@ -33,8 +33,10 @@ from reasoners.crypt_vfirst import reasoning_cryptarithm_vfirst  # noqa: E402
 from reasoners.store_types import Problem, Example  # noqa: E402
 
 B = "/mnt/evafs/groups/re-com/mgromadzki"
-P0_RE = re.compile(r"^  (?:op )?'(.)' -> ([A-Jpqr])$", re.M)
-RESOLVE_RE = re.compile(r"^Resolve ([a-z_0-9.]+):", re.M)
+# v2 interleaved P0: per-example "      <pairs>  ->  <letters>" lines
+P0_LINE_RE = re.compile(r"->  ([A-Jpqr =]+)$", re.M)
+ATTEMPT_RE = re.compile(r"^Attempt ([a-z_0-9.]+):$", re.M)
+YIELDS_RE = re.compile(r"-> this reading yields")
 
 
 def load_problem(pid):
@@ -77,22 +79,31 @@ def true_rename(examples, question):
 
 
 def gen_rename_ok(gen, examples, question):
-    """Does the generation's P0 table match the reference renaming?"""
-    truth = true_rename(examples, question)
-    pairs = P0_RE.findall(gen)
-    if not pairs:
-        return False
-    for glyph, letter in pairs:
-        if truth.get(glyph) != letter:
-            return False
-    # every problem glyph must be covered
-    covered = {g for g, _ in pairs}
-    return set(truth) <= covered
+    """v2: the generation's renamed letter equations must equal the true
+    renaming of every example + the query."""
+    full = true_rename(examples, question)
+
+    def ren(s):
+        return "".join(full.get(c, c) for c in s)
+
+    want = [f"{ren(e['input_value'])} = {ren(e['output_value'])}" for e in examples]
+    want.append(ren(question))
+    got = [x.strip() for x in P0_LINE_RE.findall(gen)]
+    return got[:len(want)] == want
 
 
 def chosen_reading(text):
-    m = RESOLVE_RE.findall(text or "")
-    return m[-1] if m else None
+    """The Attempt whose block contains '-> this reading yields'."""
+    if not text:
+        return None
+    names = [(m.start(), m.group(1)) for m in ATTEMPT_RE.finditer(text)]
+    if not names:
+        return None
+    y = YIELDS_RE.search(text)
+    if not y:
+        return None
+    before = [nm for pos, nm in names if pos < y.start()]
+    return before[-1] if before else None
 
 
 def self_exec_ok(gen):
@@ -111,6 +122,8 @@ def tail_of(cot):
         return "abstain"
     if "no digit code needed" in cot:
         return "concat"
+    if "UNDERDETERMINED:" in cot:
+        return "under"
     if "DETERMINED:" in cot:
         return "det"
     if "resolved readings agree" in cot:

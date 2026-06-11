@@ -55,10 +55,10 @@ def skeleton_of(cot):
         sk.append("filter")
     if "Resolve " in cot:
         sk.append("resolve")
-    if "DETERMINED:" in cot:
-        sk.append("det")
-    elif "UNDERDETERMINED:" in cot:
+    if "UNDERDETERMINED:" in cot:
         sk.append("under")
+    elif "DETERMINED:" in cot:
+        sk.append("det")
     elif "resolved readings agree" in cot:
         sk.append("agree-open")
     return tuple(sk)
