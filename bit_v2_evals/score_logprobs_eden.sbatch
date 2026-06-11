@@ -14,6 +14,10 @@
 set -uo pipefail
 cd /home2/faculty/mgromadzki/src/nemotron-kaggle
 source .venv/bin/activate
+# compile caches on re-com (16T), not the small /home2 quota
+export TRITON_CACHE_DIR=/mnt/evafs/groups/re-com/mgromadzki/.cache/triton
+export TORCHINDUCTOR_CACHE_DIR=/mnt/evafs/groups/re-com/mgromadzki/.cache/inductor
+mkdir -p "$TRITON_CACHE_DIR" "$TORCHINDUCTOR_CACHE_DIR"
 MODEL=/mnt/evafs/groups/re-com/mgromadzki/llms/nemotron-3-nano-30b-a3b-bf16
 DS=${DS:-/mnt/evafs/groups/re-com/mgromadzki/nemotron-master/training/sft/bit-zyx-v2-realsynth}
 ADAPTER=${ADAPTER:-$DS/adapter-3ep-b8-gh200}
