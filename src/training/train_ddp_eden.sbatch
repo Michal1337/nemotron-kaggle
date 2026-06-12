@@ -35,12 +35,17 @@ mkdir -p "$WORK"; cd "$WORK"
 
 MODEL=/mnt/evafs/groups/re-com/mgromadzki/llms/nemotron-3-nano-30b-a3b-bf16
 DS_PATH="${DS_PATH:?set DS_PATH=<dataset dir with tokens/ + logprobs/index.jsonl>}"
-STEPS="${STEPS:?set STEPS (num optimizer steps; LR decays to 0 across them)}"
 TAG="${TAG:-ddp}"
 EPOCHS="${EPOCHS:-1}"
 NGPU="${NGPU:-2}"
 BATCH="${BATCH:-32}"
 MICRO="${MICRO:-2}"
+# STEPS auto-computed for EPOCHS over the GLOBAL batch when unset/auto
+if [ -z "${STEPS:-}" ] || [ "${STEPS:-}" = "auto" ]; then
+  N=$(wc -l < "$DS_PATH/logprobs/index.jsonl")
+  SPE=$(( (N + BATCH - 1) / BATCH )); STEPS=$(( EPOCHS * SPE ))
+  echo "auto STEPS: N=$N batch=$BATCH epochs=$EPOCHS -> $STEPS"
+fi
 EXTRA_ARGS="${EXTRA_ARGS:-}"
 OUT="$DS_PATH/adapter-${TAG}"
 SHUF=""; [ "$EPOCHS" -ge 2 ] && SHUF="--shuffle-dataset"
