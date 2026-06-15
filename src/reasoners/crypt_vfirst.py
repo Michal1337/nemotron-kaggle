@@ -283,7 +283,7 @@ class Narrator:
         A = (inp[1], inp[0]) if mode == "rev_both" else (inp[0], inp[1])
         B = (inp[4], inp[3]) if mode == "rev_both" else (inp[3], inp[4])
         narrowed = sorted(((s, d) for s, d in t.items() if len(d) < 10),
-                          key=lambda kv: (len(kv[1]), kv[0]))[:4]
+                          key=lambda kv: (len(kv[1]), kv[0]))
         sets = " ".join(f"{s}:{_dset(d)}" for s, d in narrowed)
         self.em.emit(f"{lab} {c}:{op}.{mtag}.e{k+1} units {A[1]}{_opsym(op)}{B[1]} ends {nat[-1]}: {sets}")
         return lab
@@ -483,30 +483,14 @@ class Narrator:
                 _, s, c, o, bm, k = key
                 lab = self.show_table((c, o, bm, k))
                 em.emit(f"kill {names}{more}: {lab} leaves no digit for {s}")
-        dead_batch = []
-
-        def flush_dead():
-            if dead_batch:
-                em.emit("dead (propagation empties a domain): " + " ".join(dead_batch))
-                dead_batch.clear()
-
-        for ops, mode, doms in order_kept:
-            name = _combo_name(ops, mode, chars)
-            try:
-                domains, _, _ = S.propagate(self.exs, set(self.opchars), self.syms,
-                                            ops, mode, init=doms)
-                flush_dead()
-                weak.append((ops, mode, domains))
-                narrowed = {s: d for s, d in sorted(domains.items()) if len(d) <= 5}
-                sets = " ".join(f"{s}:{_dset(d)}" for s, d in list(narrowed.items())[:6])
-                em.emit(f"{name}: survives" + (f", narrowed {sets}" if sets else ""))
-            except S.Dead:
-                dead_batch.append(name)
-                if len(dead_batch) >= 5:
-                    flush_dead()
-            if self.em.over():
-                raise Abort
-        flush_dead()
+        # v3: survivors carry their TABLE-INTERSECTION domains - no joint
+        # propagation in the narrated path (its outputs were asserted
+        # brute-force results the model cannot derive). Truly-inconsistent
+        # combos that pass the table check die visibly inside attempts.
+        weak = order_kept
+        if weak:
+            em.emit("Survive the table check: "
+                    + " ".join(_combo_name(o, m, chars) for o, m, _ in weak[:10]))
         if len(weak) > 10:
             weak = weak[:10]
             em.emit("  (survivors capped at 10 by priority)")
@@ -603,10 +587,7 @@ class Narrator:
                 _, changed = self.expand_narrated(inp, out, ops[inp[2]], mode, domains, unk)
                 if changed:
                     did = True
-                    d2, _, _ = S.propagate(self.exs, set(self.opchars), self.syms,
-                                           ops, mode, init=domains)
-                    for s in domains:
-                        domains[s] = d2[s]
+                    S.apply_alldiff(domains, [0])
                     self.snapshot(domains)
                     break
             if did:
@@ -621,12 +602,11 @@ class Narrator:
             em.emit(f"Split on {s} (candidates {_dset(domains[s])}):")
             branch_results = []
             for val in sorted(domains[s]):
-                d2 = {x: set(v) for x, v in domains.items()}
-                d2[s] = {val}
+                d3 = {x: set(v) for x, v in domains.items()}
+                d3[s] = {val}
                 try:
-                    d3, _, _ = S.propagate(self.exs, set(self.opchars), self.syms,
-                                           ops, mode, init=d2)
-                    em.emit(f"  assume {s}={val}: consistent so far")
+                    S.apply_alldiff(d3, [0])
+                    em.emit(f"  assume {s}={val}:")
                     a2, res2 = self.nAC_narrated(ops, mode, d3, depth + 1)
                     branch_results.append((val, a2, res2, d3))
                 except S.Dead:
@@ -676,6 +656,37 @@ class Narrator:
             if n > W_EXPAND:
                 return n
         return n
+
+    def narrate_intersection(self, ops, mode):
+        """Visible derivation of an attempt's starting domains: per-symbol
+        string intersections of the cited tables. Returns the domains."""
+        em = self.em
+        doms = {s: set(range(10)) for s in self.syms}
+        per_sym = {}
+        for c in self.chars_order:
+            o = ops[c]
+            bm = "NA" if o in S.CONCAT else mode
+            for k, inp, out in self.by_char[c]:
+                t = self.tables.get((c, o, bm, k))
+                if t is None:
+                    continue
+                lab = self.show_table((c, o, bm, k))
+                for s, sup in t.items():
+                    if len(sup) < 10:
+                        per_sym.setdefault(s, []).append((lab, frozenset(sup)))
+        for s in sorted(per_sym):
+            parts = per_sym[s]
+            inter = set(range(10))
+            for _, sup in parts:
+                inter &= sup
+            doms[s] = inter
+            if len(parts) >= 2:
+                em.emit(f"  {s}: " + " ^ ".join(f"{lab} {_dset(set(sup))}" for lab, sup in parts)
+                        + f" -> {_dset(inter)}")
+            else:
+                lab, sup = parts[0]
+                em.emit(f"  {s}: {lab} {_dset(set(sup))}")
+        return doms
 
     # -------- P7
     def verify(self, ops, mode, domains):
@@ -852,13 +863,14 @@ def _narrate(prob):
     weak, truncated = nar.p4_dispose(cands)
     if not weak:
         return None
-    # silent prescan: exact nAC parity, no narration, to find the first
-    # reading that resolves (the chosen one gets the full derivation)
+    # silent prescan: exact visible-parity (muted v3 nAC over the same
+    # intersection domains the narration will derive)
     pres = []
     em.mute = True
     for ops, mode, domains in weak:
         try:
             work = {s: set(v) for s, v in domains.items()}
+            S.apply_alldiff(work, [0])
             a, resolved = nar.nAC_narrated(ops, mode, work)
             pres.append((a, resolved, False))
         except S.Dead:
@@ -876,15 +888,41 @@ def _narrate(prob):
             em.emit(f"Attempt {name}: resolution runs into a contradiction - eliminated")
             continue
         if chosen_i is not None and i == chosen_i:
-            em.emit(f"Attempt {name}:")
-            nar.snapshot(domains, note=f" {name}")
-            work = {s: set(v) for s, v in domains.items()}
+            # Explicit step-by-step cipher derivation (every column projection +
+            # alldiff strike/pin shown, via the flag-guarded solver trace) instead
+            # of asserting the pinned cipher. Falls back to the certificate path
+            # only if pure propagation does not pin the query answer.
+            S._TRACE.clear(); S._TRACE_ON = True
             try:
-                a, resolved = nar.nAC_narrated(ops, mode, work)
+                twork, _, _ = S.propagate(nar.exs, set(nar.opchars), nar.syms, ops, mode)
             except S.Dead:
-                return None
-            results.append((ops, mode, a, resolved, work))
-            em.emit(f"  -> this reading yields {a}")
+                S._TRACE_ON = False; return None
+            S._TRACE_ON = False
+            ta = S.try_answer(nar.q, ops, mode, twork, nar.syms)
+            if ta is not None:
+                em.emit(f"Attempt {name}: derive the cipher one step at a time "
+                        f"(each line narrows a symbol's digit set):")
+                for line in S._TRACE:
+                    em.emit(line)
+                fixed = " ".join(f"{s}={next(iter(twork[s]))}"
+                                 for s in nar.syms if len(twork[s]) == 1)
+                em.emit(f"  cipher fixed by the steps above: {fixed}")
+                results.append((ops, mode, ta, True, twork))
+                em.emit(f"  -> this reading yields {ta}")
+            else:
+                em.emit(f"Attempt {name}: derive its starting sets from the tables:")
+                work = nar.narrate_intersection(ops, mode)
+                try:
+                    S.apply_alldiff(work, [0])
+                except S.Dead:
+                    return None
+                nar.snapshot(work, note=f" {name}")
+                try:
+                    a, resolved = nar.nAC_narrated(ops, mode, work)
+                except S.Dead:
+                    return None
+                results.append((ops, mode, a, resolved, work))
+                em.emit(f"  -> this reading yields {a}")
         elif pr and pa:
             wit = find_witness(nar, ops, mode, domains)
             if wit is None:

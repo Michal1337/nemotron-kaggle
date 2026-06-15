@@ -94,28 +94,34 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-def kernel_sanity_check() -> None:
+def kernel_sanity_check() -> bool:
     """Confirm mamba_ssm + causal_conv1d CUDA kernels actually run on this GPU.
 
-    The fast Mamba path silently falls back to a pure-PyTorch reference path
-    if the kernels can't launch — much slower and uses more VRAM. Failing here
-    early beats finding out 4 hours into training.
+    Returns True if the fast-path kernels are usable, False if they're missing/
+    broken (e.g. a triton<->mamba_ssm version mismatch). In the False case the
+    model still runs via the pure-PyTorch reference Mamba path — much slower but
+    correct — so we warn and continue instead of crashing.
     """
-    import causal_conv1d
-    import mamba_ssm
     import torch
 
     cc = torch.cuda.get_device_capability(0)
     print(f"GPU: {torch.cuda.get_device_name(0)}, sm_{cc[0] * 10 + cc[1]}")
     print(f"torch={torch.__version__}, cuda={torch.version.cuda}")
-    print(f"mamba_ssm={mamba_ssm.__version__}, causal_conv1d={causal_conv1d.__version__}")
     print(f"VRAM: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
-
-    from causal_conv1d import causal_conv1d_fn
-    x = torch.randn(1, 512, 32, device="cuda", dtype=torch.bfloat16) + 4e-3
-    w = torch.randn(512, 4, device="cuda", dtype=torch.bfloat16)
-    causal_conv1d_fn(x, w, None, activation="silu")
-    print("causal_conv1d CUDA kernel: OK")
+    try:
+        import causal_conv1d
+        import mamba_ssm
+        from causal_conv1d import causal_conv1d_fn
+        print(f"mamba_ssm={mamba_ssm.__version__}, causal_conv1d={causal_conv1d.__version__}")
+        x = torch.randn(1, 512, 32, device="cuda", dtype=torch.bfloat16) + 4e-3
+        w = torch.randn(512, 4, device="cuda", dtype=torch.bfloat16)
+        causal_conv1d_fn(x, w, None, activation="silu")
+        print("causal_conv1d CUDA kernel: OK")
+        return True
+    except Exception as e:
+        print(f"WARN: Mamba fast-path kernels unavailable ({type(e).__name__}: {e}). "
+              f"Falling back to the SLOW PyTorch Mamba reference path.")
+        return False
 
 
 def load_corpus(args: argparse.Namespace) -> list[dict]:
@@ -190,21 +196,22 @@ def load_corpus(args: argparse.Namespace) -> list[dict]:
     return examples
 
 
-def patch_nemotron_fast_path() -> None:
-    """Force the Mamba CUDA fast path to be considered available.
+def patch_nemotron_fast_path(available: bool = True) -> None:
+    """Set the Mamba ``is_fast_path_available`` flag.
 
-    The model's modeling file computes ``is_fast_path_available`` at import
-    time as ``all(...)``. If any one symbol failed to import it becomes False
-    permanently. Forcing True is safe iff all kernels are actually present —
-    which kernel_sanity_check() above confirms.
+    Forcing True is safe iff all kernels are actually present (kernel_sanity_check
+    confirms). When the kernels are broken, set it False so the model uses the
+    pure-PyTorch reference Mamba path instead of trying to launch missing kernels.
     """
     for name, mod in sys.modules.items():
         if "modeling_nemotron_h" in name and hasattr(mod, "is_fast_path_available"):
             print(f"  was: is_fast_path_available={mod.is_fast_path_available}")
-            mod.is_fast_path_available = True
-            print(f"  now: is_fast_path_available=True")
+            mod.is_fast_path_available = available
+            print(f"  now: is_fast_path_available={available}")
             return
-    raise RuntimeError("Could not find modeling_nemotron_h module to patch")
+    if available:
+        raise RuntimeError("Could not find modeling_nemotron_h module to patch")
+    print("  modeling_nemotron_h not found to patch (slow path); continuing")
 
 
 def add_lm_head_lora(model) -> None:
@@ -353,6 +360,17 @@ def identify_moe_tied_params(model) -> list:
 
 def main() -> None:
     args = parse_args()
+    # Real-time logging. SLURM redirects stdout to a file, which Python BLOCK-
+    # buffers by default, so every print() below would be withheld until the
+    # buffer fills or the process exits -> the whole run looks silent (this is
+    # what made the ~20-min compile phase indistinguishable from a hang). Force
+    # line buffering so each heartbeat/step line lands in the log immediately.
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+        sys.stderr.reconfigure(line_buffering=True)
+    except Exception:
+        pass
+    print(f"[{time.strftime('%H:%M:%S')}] run start pid={os.getpid()}", flush=True)
     output_dir = Path(args.output_dir).absolute()
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -362,7 +380,7 @@ def main() -> None:
     print(f"Output:     {output_dir}")
 
     print("\n=== Kernel sanity check ===")
-    kernel_sanity_check()
+    kernels_ok = kernel_sanity_check()
 
     print("\n=== Load corpus ===")
     examples = load_corpus(args)
@@ -397,7 +415,7 @@ def main() -> None:
     FastLanguageModel.for_training(model)
 
     print("\n=== Patch Mamba fast path ===")
-    patch_nemotron_fast_path()
+    patch_nemotron_fast_path(kernels_ok)
 
     print("\n=== Add lm_head LoRA (Unsloth drops it for MoE) ===")
     add_lm_head_lora(model)
@@ -487,6 +505,9 @@ def main() -> None:
           f"micro_batch={args.micro_batch_size}  lr={args.learning_rate}")
 
     step = 0
+    train_t0 = time.time()
+    print(f"[{time.strftime('%H:%M:%S')}] entering training loop "
+          f"({num_steps} steps)", flush=True)
     for batch_start in range(0, len(indices), args.batch_size):
         if step >= num_steps:
             break
@@ -522,6 +543,11 @@ def main() -> None:
                 padded_weights[i, :seq_len] = torch.tensor(mb_wts[i], dtype=torch.float32)
                 attention_mask[i, :seq_len] = 1
 
+            if step == 0 and mb_start == 0:
+                print(f"  [{time.strftime('%H:%M:%S')}] first forward pass starting — "
+                      f"this triggers torch.compile + CUDA-graph capture; expect "
+                      f"~15-25 min of silence before the 'mb 0' line below (NOT a hang).",
+                      flush=True)
             t0 = time.time()
             with torch.amp.autocast("cuda", dtype=torch.bfloat16):
                 model(
@@ -544,7 +570,7 @@ def main() -> None:
             mem_gb = torch.cuda.memory_allocated() / 1e9
             print(f"    mb {mb_start // args.micro_batch_size}: {n_micro}x{max_len} "
                   f"total={total_len} wall={time.time() - t0:.1f}s "
-                  f"peak={peak_gb:.1f}GB mem={mem_gb:.1f}GB")
+                  f"peak={peak_gb:.1f}GB mem={mem_gb:.1f}GB", flush=True)
 
         if optimizer is None:
             optimizer = torch.optim.AdamW(
@@ -562,7 +588,11 @@ def main() -> None:
         optimizer.zero_grad()
         loss_mean = total_loss_sum / total_weight_sum if total_weight_sum > 0 else 0
         step += 1
-        print(f"  step {step}/{num_steps}: loss={loss_mean:.6f} grad_norm={grad_norm:.4f} lr={lr:.2e}")
+        elapsed = time.time() - train_t0
+        eta = elapsed / step * (num_steps - step)
+        print(f"  [{time.strftime('%H:%M:%S')}] step {step}/{num_steps}: "
+              f"loss={loss_mean:.6f} grad_norm={grad_norm:.4f} lr={lr:.2e} "
+              f"elapsed={elapsed / 60:.1f}m eta={eta / 60:.1f}m", flush=True)
 
     print(f"\nTraining complete. Peak VRAM: {torch.cuda.max_memory_allocated() / 1e9:.1f} GB")
 

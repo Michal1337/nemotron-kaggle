@@ -6,6 +6,7 @@ with a strict-validity filter for candidate assignment vectors.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from itertools import combinations
 from typing import Dict, List, Literal, Optional, Sequence, Tuple
@@ -1169,6 +1170,41 @@ def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
             for tl in triple_lines:
                 lines.append(tl)
             lines.append("")
+
+    # Determinability fallback (honest, before default 1): for any bit still
+    # defaulted, search EVERY family that fits the column across all examples
+    # (ungated by the stride-preferred operands the matching step uses). If the
+    # fitting families UNANIMOUSLY agree on the query bit, the bit is uniquely
+    # determined -> derive the simplest such family (the full search + agreement is
+    # shown). If they disagree (or none fit), the bit is genuinely under-determined
+    # -> keep the consistent `default 1`. Answer-blind: gold is never consulted; the
+    # external keep/drop filter is unchanged.
+    # OFF by default: the +7 it recovers (1364->1371) are excluded so the solvable
+    # set and the synth target (bit_real_dist.json, mined from the 1364 huikang set)
+    # stay consistent. Set BIT_DETERMINABILITY_FALLBACK=1 to re-enable.
+    fb_lines: List[str] = []
+    if os.environ.get("BIT_DETERMINABILITY_FALLBACK"):
+        for i in range(N_BITS):
+            if not best[i].is_default:
+                continue
+            full = [c for name in SECTION_ORDER for c in all_matches[name][i]]
+            if not full:
+                fb_lines.append(f"{i} no family fits -> default 1")
+                continue
+            qvals = {_evaluate_rule(question_bits, c) for c in full}
+            if len(qvals) == 1:
+                best[i] = full[0]  # SECTION_ORDER is priority order -> simplest determining family
+                fb_lines.append(
+                    f"{i} fits {' '.join(c.expr for c in full)} -> all give "
+                    f"{next(iter(qvals))}; determined = {best[i].expr}")
+            else:
+                fb_lines.append(
+                    f"{i} fits {' '.join(c.expr for c in full)} -> disagree "
+                    f"{sorted(qvals)}; under-determined -> default 1")
+    if fb_lines:
+        lines.append("Default-bit determinability check")
+        lines.extend(fb_lines)
+        lines.append("")
 
     # Check if we have any non-default rules
     if all(r.is_default for r in best):

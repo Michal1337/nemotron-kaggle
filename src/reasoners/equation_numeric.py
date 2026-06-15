@@ -354,6 +354,7 @@ def _apply_op_v2(found: FoundOp, a_str: str, b_str: str) -> tuple[str, list[str]
             raw_result = res
             break
     final = _rev(raw_result) if found.rev_res else raw_result
+    signed_raw = final  # pre-sigil value (leading '-' iff the true result is negative)
 
     expr = _expr(found.op_name, ta, tb)
     inter = _expr_intermediate(found.op_name, ta, tb)
@@ -366,52 +367,54 @@ def _apply_op_v2(found: FoundOp, a_str: str, b_str: str) -> tuple[str, list[str]
     val = f"{raw_result} -rev-> {final}" if found.rev_res else final
     steps.append(f"{found.op_name} f({ta}, {tb}) ={detail} {val}")
 
+    # Apply the sign sigil to the boxed value. The sign is EXPLAINED uniformly by
+    # the consolidated _sign_resolution_line emitted just before the box (positive
+    # and negative alike); here we only do the mechanical rewrite.
+    #   - neg_suffix: a negative result carries the operator glyph as a suffix.
+    #   - neg_prefix / num: a non-'-' operator glyph stands in for the minus sign
+    #     as a PREFIX; a '-' operator is the natural minus and is left as '-N'.
     if found.fmt == "neg_suffix":
         if final.startswith("-"):
-            old = final
             final = final[1:] + found.op_char
-            steps.append(
-                f"Result is negative, re-attaching the 【{found.op_char}】 suffix: {old} -> {final}"
-            )
-        else:
-            steps.append(f"Result is non-negative, no suffix needed: {final}")
-    elif found.fmt == "neg_prefix":
-        if final.startswith("-"):
-            if found.op_char == "-":
-                # natural minus — the result already carries its own '-' sign;
-                # there is no sigil to re-attach (audit 2026-06-10: the generic
-                # branch emitted a no-op "re-attaching: -35 -> -35" line)
-                steps.append(
-                    f"Result is negative; with the natural minus operator it keeps "
-                    f"its leading `-`: {final}")
-            else:
-                old = final
-                final = found.op_char + final[1:]
-                steps.append(
-                    f"Result is negative, re-attaching the 【{found.op_char}】 prefix: {old} -> {final}"
-                )
-        elif found.op_char == "-":
-            steps.append(f"Result is non-negative: {final}")
-        else:
-            steps.append(f"Result is non-negative, no prefix needed: {final}")
-    else:
-        # fmt == "num" — no sign sigil appeared in the examples. Dataset
-        # convention for a negative result: it is written with the OPERATOR's
-        # OWN symbol as a prefix, in place of a minus sign. When the operator
-        # symbol is '-' that is just the natural '-N'; for any other operator
-        # the negative is '<op>N' (e.g. -17 -> /17), never a literal '-'.
-        if final.startswith("-"):
-            if found.op_char == "-":
-                steps.append(f"Result is negative: {final}")
-            else:
-                old = final
-                final = found.op_char + final[1:]
-                steps.append(
-                    f"Result is negative; negatives are written with the operator "
-                    f"symbol 【{found.op_char}】 as a prefix (the operator is not '-', "
-                    f"so it stands in for the minus sign): {old} -> {final}")
+    elif found.op_char != "-" and final.startswith("-"):
+        final = found.op_char + final[1:]
 
-    return final, steps
+    return final, steps, signed_raw
+
+
+def _sign_resolution_line(found: "FoundOp", signed_raw: str, final: str) -> str:
+    """The single, ALWAYS-emitted final result statement. One uniform shape, but
+    the negative branch is HONEST about how the prefix/suffix position is known:
+      - positive       -> "result is positive, RES -> RES"  (no sigil)
+      - natural '-'    -> the result keeps its own leading '-'.
+      - neg, OBSERVED  -> position came from a negative example in the sign-marker
+                          check (fmt neg_prefix / neg_suffix): "the examples write
+                          【q】's negatives as a PREFIX/SUFFIX, so ...".
+      - neg, DEFAULT   -> no negative example for this op (fmt num, incl. every
+                          guess query op): say so, and that PREFIX is the dataset
+                          convention default — do NOT pretend it was observed.
+    Datamine basis (eq_sign_convention memory): the sigil is ALWAYS the operator's
+    own glyph; position is per-problem and only knowable from a negative example.
+    """
+    q = found.op_char
+    if not signed_raw.startswith("-"):
+        return f"Query op 【{q}】: result is positive, {signed_raw} -> {final}"
+    if q == "-":
+        return (f"Query op 【-】: result is negative; 【-】 is the natural minus "
+                f"sign, {signed_raw} -> {final}")
+    if found.fmt == "neg_suffix":
+        return (f"Query op 【{q}】: result is negative; the examples write 【{q}】's "
+                f"negatives with the operator glyph as a SUFFIX (X【{q}】), so "
+                f"{signed_raw} -> {final}")
+    if found.fmt == "neg_prefix":
+        return (f"Query op 【{q}】: result is negative; the examples write 【{q}】's "
+                f"negatives with the operator glyph as a PREFIX (【{q}】X), so "
+                f"{signed_raw} -> {final}")
+    # fmt == "num": no negative example for 【q】 was observed (always the case for
+    # a guess query op) — prefix is the convention default, stated as such.
+    return (f"Query op 【{q}】: result is negative; no negative example fixes 【{q}】's "
+            f"position, so by convention a negative is written with the operator "
+            f"glyph as a PREFIX (【{q}】X), {signed_raw} -> {final}")
 
 
 def _mode_tag(rev_ops: bool, rev_res: bool) -> str:
@@ -657,10 +660,10 @@ def _build_deduce_v2(problem: Problem) -> str | None:
         f"Step 2 - apply the query operator 【{q_op}】 = {found.op_name} under "
         f"[{_mode_tag(*chosen_mode)}] (found in Step 1).")
     lines.append(f"Applying to {problem.question}:")
-    result_val, steps = _apply_op_v2(found, qa, qb)
+    result_val, steps, signed_raw = _apply_op_v2(found, qa, qb)
     for step in steps:
         lines.append(f"  {step}")
-    lines.append(f"  Result: {result_val}")
+    lines.append(f"  {_sign_resolution_line(found, signed_raw, result_val)}")
     lines.append("")
     lines.append("I will now return the answer in \\boxed{}")
     lines.append(f"The answer in \\boxed{{–}} is \\boxed{{{result_val}}}")
@@ -1233,10 +1236,10 @@ def _build_guess_v2(problem: Problem) -> str | None:
                     fmt="num", op_char=q_op)
     lines.append("")
     lines.append(f"Applying to {problem.question}:")
-    result_val, steps = _apply_op_v2(found, qa, qb)
+    result_val, steps, signed_raw = _apply_op_v2(found, qa, qb)
     for step in steps:
         lines.append(f"  {step}")
-    lines.append(f"  Result: {result_val}")
+    lines.append(f"  {_sign_resolution_line(found, signed_raw, result_val)}")
     lines.append("")
     lines.append("I will now return the answer in \\boxed{}")
     lines.append(f"The answer in \\boxed{{–}} is \\boxed{{{result_val}}}")

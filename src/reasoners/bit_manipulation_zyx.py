@@ -22,6 +22,25 @@ from reasoners.store_types import Problem
 
 N_BITS = 8
 
+# v4: cap how many per-example program-verification lines the Whole-word check
+# RENDERS (ok_all is still computed over ALL examples, so the boxed answer is
+# unchanged / gold-clean). None = render all (v3 behaviour). The v4 build sets
+# this to 2 to trim the base-CoT length near the 7680-token cap.
+SHOW_CHECK_EXAMPLES: Optional[int] = None
+
+# v5: when True, the Whole-word check DERIVES the program from the visible per-bit
+# operand offsets (matched winners -> full candidate lists -> region boundary)
+# instead of asserting `Found {program}` cold. 99.9% of program-bearing reals are
+# offset-derivable (src/corpus/_bit_census_measure.py); the irreducible tail is
+# framed as an explicit verified hypothesis. None/False = v3/v4 behaviour.
+DERIVE_PROGRAM: bool = False
+
+# v5-short: state each example output/input on ONE line (drop the per-bit 8-line
+# expansion); the bitsum-hash "Output bit columns" section is kept. The per-bit
+# lines are pure restatement (the matching works off the columns), so this is
+# gold-clean. Default False = full v3/v4/v5 body.
+COMPACT_IO: bool = False
+
 SYM_FAMILIES = ("XOR", "OR", "AND")
 ASYM_FAMILIES = ("AND-NOT", "XOR-NOT", "OR-NOT")
 PAIR_FAMILIES = SYM_FAMILIES + ASYM_FAMILIES
@@ -396,6 +415,233 @@ def _emit_apply(
     return "".join(answer_bits)
 
 
+def _offset_evidence(ex_pairs):
+    """For each output bit j, the set of operand offsets (src-j mod 8) used by ANY
+    example-consistent 1- or 2-input rule. The honest derivation reads shifts off
+    these; an offset present here is visible per-bit evidence, not a hidden search."""
+    from reasoners.bitword_solver import _bits, _eval_pair
+    ins = [_bits(i) for i, _ in ex_pairs]
+    outs = [_bits(o) for _, o in ex_pairs]
+    ev = [set() for _ in range(N_BITS)]
+    for j in range(N_BITS):
+        col = [o[j] for o in outs]
+        for p in range(N_BITS):
+            ip = [inp[p] for inp in ins]
+            if all(x == c for x, c in zip(ip, col)) or all((1 - x) == c for x, c in zip(ip, col)):
+                ev[j].add((p - j) % N_BITS)
+        for fam in PAIR_FAMILIES:
+            for p in range(N_BITS):
+                for r in range(N_BITS):
+                    if p != r and all(_eval_pair(fam, inp[p], inp[r]) == c for inp, c in zip(ins, col)):
+                        ev[j].add((p - j) % N_BITS); ev[j].add((r - j) % N_BITS)
+    return ev
+
+
+def _matched_census(best):
+    """Raw offset census of the Matched table: offset (src-bit mod 8) -> bits it
+    appears at, plus the constant-rule bits. Pure read-off, printed on EVERY CoT
+    so the program-vs-no-program verdict follows visible evidence (the old bare
+    'no program' line was an unlearnable fork - same failure mode as the v2
+    conditional override branch)."""
+    offs, consts = {}, []
+    for j, r in enumerate(best):
+        srcs = [s for s in (r.primary, r.secondary) if s is not None]
+        if not srcs:
+            consts.append(j)
+            continue
+        for s in srcs:
+            offs.setdefault((s - j) % N_BITS, []).append(j)
+    return offs, consts
+
+
+def _census_block(offs, consts):
+    out = ["Offset census of the matched operands (offset = source - bit, mod 8):"]
+    for o in sorted(offs):
+        out.append(f"  +{o} at bits {_bitset_str(set(offs[o]))}")
+    if consts:
+        out.append(f"  constant rules at bits {_bitset_str(set(consts))}")
+    return out
+
+
+def _derive_program_lines(best, prog, ex_pairs):
+    """Replace the cold `Found {program}` with a derivation: census first (always),
+    each shift read off it (kind by dead-region/wrap), climbing census ->
+    candidate lists -> region boundary -> explicit hypothesis."""
+    from reasoners.bitword_solver import term_name as _tn
+    offs, consts = _matched_census(best)
+    out = _census_block(offs, consts)
+    out.append("Read the shifts off the census (kind fixed by where the column wraps vs zero-fills):")
+    ev = None
+    for t in prog[0::2]:
+        kind, k, _neg = t
+        if kind == 'ROT':
+            off, alive = (-k) % N_BITS, list(range(N_BITS))
+            desc = f"input[(j-{k}) mod 8], live at every bit (wraps)" if k else "input[j] (identity)"
+        elif kind == 'SHL':
+            off = k % N_BITS
+            alive = [j for j in range(N_BITS) if j + k < N_BITS]
+            desc = f"input[j+{k}], live only at bits {alive[0]}-{alive[-1]} (0 past the top)"
+        else:  # SHR
+            off = (-k) % N_BITS
+            alive = [j for j in range(N_BITS) if j - k >= 0]
+            desc = f"input[j-{k}], live only at bits {alive[0]}-{alive[-1]} (0 below bit 0)"
+        nm = _tn(t)
+        aset = set(alive)
+        mb = [j for j in offs.get(off, []) if j in aset]
+        if mb:
+            out.append(f"  offset +{off} = {desc}; in the census at bits {_bitset_str(set(mb))} -> {nm}")
+            continue
+        if ev is None:
+            ev = _offset_evidence(ex_pairs)
+        cb = [j for j in alive if off in ev[j]]
+        if cb:
+            out.append(f"  offset +{off} = {desc}; not in the census but in the candidate lists at bits {_bitset_str(set(cb))} (the stride pick chose another operand) -> {nm}")
+        elif kind in ('SHL', 'SHR') and k != 0:
+            dead = [j for j in range(N_BITS) if j not in alive]
+            out.append(f"  a term dead at bits {dead[0]}-{dead[-1]} (the program reduces there); the boundary fixes -> {nm}")
+        else:
+            out.append(f"  offset +{off} = {desc}: not visible in the per-bit evidence; hypothesis -> {nm} (verified on every example below)")
+    out.extend(_derive_combine_lines(best, prog))
+    return out
+
+
+def _term_alive_flags(term):
+    kind, k, _ = term
+    if kind == 'ROT':
+        return [True] * N_BITS
+    if kind == 'SHL':
+        return [j + k < N_BITS for j in range(N_BITS)]
+    return [j - k >= 0 for j in range(N_BITS)]
+
+
+def _term_src(term, j):
+    kind, k, _ = term
+    return (j - k) % N_BITS if kind == 'ROT' else (j + k if kind == 'SHL' else j - k)
+
+
+def _sym_neg(e):
+    if e[0] == 'const':
+        return ('const', 1 - e[1])
+    if e[0] == 'term':
+        return ('term', e[1], not e[2])
+    op = e[1]
+    if op == 'XOR':
+        return ('op', 'XOR', e[2], _sym_neg(e[3]))
+    return ('op', {'AND': 'OR', 'OR': 'AND'}[op], _sym_neg(e[2]), _sym_neg(e[3]))
+
+
+def _sym_combine(a, op, b):
+    for x, y in ((a, b), (b, a)):
+        if x[0] == 'const':
+            c = x[1]
+            if op == 'AND':
+                return y if c == 1 else ('const', 0)
+            if op == 'OR':
+                return y if c == 0 else ('const', 1)
+            return y if c == 0 else _sym_neg(y)
+    return ('op', op, a, b)
+
+
+def _sym_name(e, terms):
+    if e[0] == 'const':
+        return str(e[1])
+    if e[0] == 'term':
+        kind, k, _ = terms[e[1]]
+        return f"NOT {kind}{k}" if e[2] else f"{kind}{k}"
+    return f"({_sym_name(e[2], terms)} {e[1]} {_sym_name(e[3], terms)})"
+
+
+def _winner_matches(reduced, j, rule, terms):
+    """Does the per-bit Matched winner at bit j display exactly the reduced form?"""
+    if reduced[0] == 'const':
+        return rule.family == str(reduced[1])
+    if reduced[0] == 'term':
+        src = _term_src(terms[reduced[1]], j)
+        fam = 'NOT' if reduced[2] else 'I'
+        return rule.family == fam and rule.primary == src
+    if reduced[2][0] != 'term' or reduced[3][0] != 'term':
+        return False  # 3-input region: not displayable as one table row
+    op = reduced[1]
+    (i1, n1), (i2, n2) = (reduced[2][1], reduced[2][2]), (reduced[3][1], reduced[3][2])
+    s1, s2 = _term_src(terms[i1], j), _term_src(terms[i2], j)
+    if op == 'XOR':
+        fam = 'XOR-NOT' if (n1 ^ n2) else 'XOR'
+        return rule.family == fam and {rule.primary, rule.secondary} == {s1, s2}
+    if n1 and n2:
+        return False  # NOR/NAND shapes are not in the per-bit family vocabulary
+    if n1:
+        return rule.family == f"{op}-NOT" and rule.primary == s2 and rule.secondary == s1
+    if n2:
+        return rule.family == f"{op}-NOT" and rule.primary == s1 and rule.secondary == s2
+    return rule.family == op and {rule.primary, rule.secondary} == {s1, s2}
+
+
+def _bitset_str(bits):
+    runs, start = [], None
+    for j in range(N_BITS + 1):
+        inb = j < N_BITS and j in bits
+        if inb and start is None:
+            start = j
+        elif not inb and start is not None:
+            runs.append(f"{start}" if start == j - 1 else f"{start}-{j-1}")
+            start = None
+    return ",".join(runs)
+
+
+def _derive_combine_lines(best, prog):
+    """Derive the combine ops by regional reduction: dead shifts substitute their
+    constant (0, or 1 under NOT), the program folds to a small form per region,
+    and the per-bit table row showing that form is cited. The ops are whatever
+    makes every region's fold come out as displayed - read off, not asserted."""
+    terms = prog[0::2]
+    ops = list(prog[1::2])
+    if not ops:
+        return ["Single-term program; no combine step."]
+    alive = [_term_alive_flags(t) for t in terms]
+    regions = {}
+    for j in range(N_BITS):
+        regions.setdefault(tuple(a[j] for a in alive), []).append(j)
+    out = ["Combine: substitute the dead-shift constants region by region:"]
+    any_reduced = False
+    for pat, bits in sorted(regions.items(), key=lambda kv: kv[1][0]):
+        # substituted (unfolded) display + folded form
+        leaves = []
+        subs = []
+        for i, t in enumerate(terms):
+            kind, k, neg = t
+            if pat[i]:
+                leaves.append(('term', i, neg))
+            else:
+                leaves.append(('const', 1 if neg else 0))
+                subs.append(f"{_tn_of(t)}={1 if neg else 0}")
+        cur = leaves[0]
+        disp = _sym_name(leaves[0], terms)
+        for i, op in enumerate(ops):
+            disp = f"({disp} {op} {_sym_name(leaves[i + 1], terms)})"
+            cur = _sym_combine(cur, op, leaves[i + 1])
+        line = f"  bits {_bitset_str(bits)}: "
+        line += (f"{', '.join(subs)} -> {disp} = {_sym_name(cur, terms)}"
+                 if subs else f"all terms live -> {disp}")
+        ptr = next((j for j in bits if _winner_matches(cur, j, best[j], terms)), None)
+        if ptr is not None:
+            line += f"  [= {best[ptr].expr} in the table at bit {ptr}]"
+        if subs:
+            any_reduced = True
+        out.append(line)
+    from reasoners.bitword_solver import program_name
+    if any_reduced:
+        out.append(f"The combine consistent with every region: {program_name(prog)}")
+    else:
+        out.append(f"No reducing region (all terms live everywhere); combine is a"
+                   f" hypothesis verified on every example below: {program_name(prog)}")
+    return out
+
+
+def _tn_of(t):
+    kind, k, neg = t
+    return f"NOT {kind}{k}" if neg else f"{kind}{k}"
+
+
 def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
     examples = problem.examples
     if not examples:
@@ -542,8 +788,11 @@ def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
     # 2) output examples
     for i, out in enumerate(outputs):
         lines.append(f"Output {i}: {out}")
-        for bit in range(N_BITS):
-            lines.append(f"{bit} {out[bit]}")
+        if not COMPACT_IO:
+            for bit in range(N_BITS):
+                lines.append(f"{bit} {out[bit]}")
+            lines.append("")
+    if COMPACT_IO:
         lines.append("")
 
     # 3) output bit columns
@@ -557,8 +806,11 @@ def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
     lines.append("")
     for i, inp in enumerate(inputs):
         lines.append(f"Input {i}: {inp}")
-        for bit in range(N_BITS):
-            lines.append(f"{bit} {inp[bit]}")
+        if not COMPACT_IO:
+            for bit in range(N_BITS):
+                lines.append(f"{bit} {inp[bit]}")
+            lines.append("")
+    if COMPACT_IO:
         lines.append("")
 
     # 5) Operation sections (raw data + matching + LRM)
@@ -1043,7 +1295,10 @@ def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
     final = best_answer
     if prog is not None:
         terms = prog[0::2]
-        lines.append(f"Found {program_name(prog)}")
+        if DERIVE_PROGRAM:
+            lines.extend(_derive_program_lines(best, prog, ex_pairs))
+        else:
+            lines.append(f"Found {program_name(prog)}")
         # First example shows the full term-by-term breakdown (teaches the
         # mechanic once); the rest are compact - for an example-exact program
         # res==out on every example, so "inp -> res vs out yes" is determined
@@ -1054,16 +1309,19 @@ def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
         # the 7680 cap with no learnability benefit on kept CoTs.
         lines.append("Check on examples")
         ok_all = True
+        _show = len(ex_pairs) if SHOW_CHECK_EXAMPLES is None else SHOW_CHECK_EXAMPLES
         for k, (inp, out) in enumerate(ex_pairs):
             words, res = eval_program(inp, prog)
+            if res != out:
+                ok_all = False
+            if k >= _show:  # ok_all still covers every example; just render fewer
+                continue
             flag = "yes" if res == out else "no"
             if k == 0:
                 parts = " ".join(f"{term_name(t)}={w}" for t, w in zip(terms, words))
                 lines.append(f"{inp} {parts} -> {res} vs {out} {flag}")
             else:
                 lines.append(f"{inp} -> {res} vs {out} {flag}")
-            if res != out:
-                ok_all = False
         if ok_all:
             words, res = eval_program(question_bits, prog)
             lines.append(f"Apply to {question_bits}")
@@ -1079,7 +1337,13 @@ def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
             # defensive only: solve_program verifies on examples by construction
             lines.append("program misfit; keep per-bit")
     else:
-        lines.append("no program; keep per-bit")
+        if DERIVE_PROGRAM:
+            offs, consts = _matched_census(best)
+            lines.extend(_census_block(offs, consts))
+            lines.append("No single program fits all examples and the question"
+                         " unambiguously; keep per-bit")
+        else:
+            lines.append("no program; keep per-bit")
 
     lines.append("")
     lines.append(f"\\boxed{{{final}}}")

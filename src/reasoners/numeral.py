@@ -33,7 +33,21 @@ def _to_roman(n: int) -> str:
 
 def reasoning_numeral(problem: Problem) -> str:
     lines: list[str] = []
-    lines.append("This is an Arabic to Roman numeral conversion.")
+    # Rich format (matches the C-crypt CoTs): show the examples, the full 1-100
+    # Arabic->Roman reference table, then the lookup. The bare converter (no
+    # examples / no table) collapsed the numeral CoT 957 -> ~112 tokens.
+    lines.append("We need to determine the conversion rule from the given examples.")
+    lines.append("I will put my final answer inside \\boxed{}.")
+    lines.append("")
+    lines.append("Examples:")
+    for ex in problem.examples:
+        lines.append(f"  {ex.input_value} -> {ex.output_value}")
+    lines.append("")
+    lines.append("This is Arabic to Roman numeral conversion.")
+    lines.append("")
+    lines.append("Reference table (1-100):")
+    for k in range(1, 101):
+        lines.append(f"  {k} = {_to_roman(k)}")
     lines.append("")
     n = int(problem.question)
     computed = _to_roman(n)

@@ -54,10 +54,16 @@ def parse_args() -> argparse.Namespace:
                    help="PEFT adapter dir. Omit (with --no-adapter) to evaluate base model only.")
     p.add_argument("--no-adapter", action="store_true",
                    help="Evaluate BASE model only. Disables LoRA loading.")
-    p.add_argument("--corpus-index", required=True,
-                   help="Path to logprobs/index.jsonl. Defines what's IN the training corpus.")
-    p.add_argument("--train-csv", required=True)
-    p.add_argument("--problems-jsonl", required=True)
+    p.add_argument("--corpus-index", default=None,
+                   help="Path to logprobs/index.jsonl. Defines what's IN the training corpus. "
+                        "Not needed with --val-jsonl.")
+    p.add_argument("--train-csv", default=None)
+    p.add_argument("--problems-jsonl", default=None)
+    p.add_argument("--val-jsonl", default=None,
+                   help="Evaluate records directly from a val.jsonl (each line: id, category, "
+                        "source, prompt, answer). Bypasses pool/sampling and reports accuracy "
+                        "per (category, source) so the real-val and synth-val splits are scored "
+                        "separately.")
     p.add_argument("--output", required=True)
 
     # Sampling
@@ -87,6 +93,22 @@ def parse_args() -> argparse.Namespace:
 
 
 def extract_answer(text: str) -> str:
+    # The answer is the content of the FINAL \boxed{...}. The cryptarithm/equation
+    # symbol alphabet includes '{' and '}' (~20% of crypt golds, e.g. '}{+{', '24}'),
+    # which collide with the LaTeX delimiter. A non-greedy [^}]* stops at the first
+    # inner '}' and truncates/empties the answer -> false zero at scoring AND at
+    # submission. So take the last '\boxed{' (preferring the post-</think> answer
+    # line) and capture through to the LAST '}' in that region.
+    tail = text.rsplit("</think>", 1)[-1]
+    src = tail if "\\boxed{" in tail else text
+    i = src.rfind("\\boxed{")
+    if i >= 0:
+        inner = src[i + len("\\boxed{"):]
+        j = inner.rfind("}")
+        ans = (inner[:j] if j >= 0 else inner).strip()
+        if ans:
+            return ans
+    # fallback: legacy non-empty boxed groups (handles the no-final-brace case)
     matches = re.findall(r"\\boxed\{([^}]*)(?:\}|$)", text)
     if not matches:
         return ""
@@ -150,23 +172,35 @@ def main() -> None:
     if not args.no_adapter and not args.adapter:
         raise SystemExit("--adapter required (or pass --no-adapter for baseline eval)")
 
-    problems = {json.loads(l)["id"]: json.loads(l) for l in open(args.problems_jsonl)}
-    train: dict[str, dict] = {}
-    with open(args.train_csv, newline="", encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            train[row["id"]] = {"prompt": row["prompt"], "answer": row["answer"]}
+    if args.val_jsonl:
+        sample = [json.loads(l) for l in open(args.val_jsonl)]
+        for s in sample:
+            s.setdefault("source", "real")
+        cat_counts = Counter((s["category"], s["source"]) for s in sample)
+        print(f"Val-jsonl: {len(sample)} records from {args.val_jsonl}")
+        print(f"  by (category, source): {dict(cat_counts)}")
+    else:
+        if not (args.corpus_index and args.train_csv and args.problems_jsonl):
+            raise SystemExit("--corpus-index, --train-csv, --problems-jsonl required (or use --val-jsonl)")
+        problems = {json.loads(l)["id"]: json.loads(l) for l in open(args.problems_jsonl)}
+        train: dict[str, dict] = {}
+        with open(args.train_csv, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                train[row["id"]] = {"prompt": row["prompt"], "answer": row["answer"]}
 
-    pool = build_pool(args.corpus_index, problems, train, args.pool_mode, args.status)
-    pool_cat = Counter(p["category"] for p in pool)
-    print(f"Pool ({args.pool_mode}"
-          + (f", status={args.status}" if args.status else "")
-          + f"): {len(pool):,} problems")
-    print(f"  by category: {dict(pool_cat)}")
-    if not pool:
-        raise SystemExit("Pool is empty — check --pool-mode / --status combination.")
-    sample = stratified_sample(pool, args.sample_per_category, args.seed)
-    cat_counts = Counter(s["category"] for s in sample)
-    print(f"Sample: {len(sample)} ({dict(cat_counts)})")
+        pool = build_pool(args.corpus_index, problems, train, args.pool_mode, args.status)
+        pool_cat = Counter(p["category"] for p in pool)
+        print(f"Pool ({args.pool_mode}"
+              + (f", status={args.status}" if args.status else "")
+              + f"): {len(pool):,} problems")
+        print(f"  by category: {dict(pool_cat)}")
+        if not pool:
+            raise SystemExit("Pool is empty — check --pool-mode / --status combination.")
+        sample = stratified_sample(pool, args.sample_per_category, args.seed)
+        for s in sample:
+            s.setdefault("source", "real")
+        cat_counts = Counter(s["category"] for s in sample)
+        print(f"Sample: {len(sample)} ({dict(cat_counts)})")
 
     # Late import so the script can be inspected without vLLM installed
     print("\n=== Initializing vLLM ===")
@@ -220,18 +254,21 @@ def main() -> None:
 
     # Score
     results: list[dict] = []
-    for ex, out in zip(sample, outputs):
+    for ex, prompt, out in zip(sample, prompts, outputs):
         gen_text = out.outputs[0].text
         predicted = extract_answer(gen_text)
         correct = verify(ex["answer"], predicted)
         results.append({
             "id": ex["id"],
             "category": ex["category"],
+            "source": ex.get("source", "real"),
             "gold": ex["answer"],
             "predicted": predicted,
             "correct": correct,
             "gen_chars": len(gen_text),
             "gen_tokens": len(out.outputs[0].token_ids),
+            "prompt": prompt,
+            "generation": gen_text,
         })
         flag = "OK " if correct else "!! "
         print(f"  {flag} {ex['id']} {ex['category']:>24s}  "
@@ -240,8 +277,10 @@ def main() -> None:
 
     # Aggregate
     by_cat: dict[str, list[bool]] = defaultdict(list)
+    by_cat_src: dict[tuple, list[bool]] = defaultdict(list)
     for r in results:
         by_cat[r["category"]].append(r["correct"])
+        by_cat_src[(r["category"], r["source"])].append(r["correct"])
     total_correct = sum(r["correct"] for r in results)
 
     print(f"\n=== Per-category accuracy ===")
@@ -252,6 +291,15 @@ def main() -> None:
         print(f"  {cat:>24s}  {n:>4d}  {c:>8d}  {100 * c / n:>5.1f}%")
     print(f"  {'TOTAL':>24s}  {len(results):>4d}  {total_correct:>8d}  "
           f"{100 * total_correct / len(results):>5.1f}%")
+
+    # Per (category, source) — real-val vs synth-val scored separately
+    sources = sorted({s for _, s in by_cat_src})
+    if len(sources) > 1:
+        print(f"\n=== Per (category, source) accuracy ===")
+        print(f"  {'category':>24s}  {'source':>6s}  {'n':>4s}  {'correct':>8s}  {'acc':>6s}")
+        for (cat, src) in sorted(by_cat_src):
+            v = by_cat_src[(cat, src)]
+            print(f"  {cat:>24s}  {src:>6s}  {len(v):>4d}  {sum(v):>8d}  {100 * sum(v) / len(v):>5.1f}%")
 
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     summary = {
@@ -267,6 +315,10 @@ def main() -> None:
         "by_category": {cat: {"n": len(by_cat[cat]), "correct": sum(by_cat[cat]),
                               "accuracy": sum(by_cat[cat]) / len(by_cat[cat])}
                         for cat in sorted(by_cat)},
+        "by_category_source": {f"{cat}/{src}": {"n": len(by_cat_src[(cat, src)]),
+                                                "correct": sum(by_cat_src[(cat, src)]),
+                                                "accuracy": sum(by_cat_src[(cat, src)]) / len(by_cat_src[(cat, src)])}
+                               for (cat, src) in sorted(by_cat_src)},
         "total_elapsed_s": total_elapsed,
         "results": results,
     }

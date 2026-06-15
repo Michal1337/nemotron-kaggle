@@ -83,7 +83,14 @@ def reasoning_cryptarithm(problem: Problem) -> str | None:
         if q_ct is None:
             return None
     else:
-        return None
+        # Unseen query op = the GUESS case. Default to FORWARD concatenation (the
+        # honest fallback when the op was never shown — the narrator narrates this
+        # as "operator unknown, we default to concatenation"). For any other
+        # category an unseen op still abstains (keeps arithmetic deduce clean).
+        if str(problem.category).endswith("guess"):
+            q_ct = "fwd"
+        else:
+            return None
 
     if q_ct == "fwd":
         answer = q_a[0] + q_a[1] + q_b[0] + q_b[1]
@@ -94,6 +101,23 @@ def reasoning_cryptarithm(problem: Problem) -> str | None:
     lines: list[str] = []
     lines.append("We need to infer the transformation rule from the examples.")
     lines.append("I will put my final answer inside \\boxed{}.")
+    lines.append("")
+    lines.append(f"The question is: {q}")
+    lines.append(f"The query operator is 【{q_op}】. We need the value of "
+                 f"{q_a[0]}{q_a[1]}{q_op}{q_b[0]}{q_b[1]}.")
+    lines.append("")
+    lines.append("Examples:")
+    for ex in problem.examples:
+        lines.append(f"  {ex.input_value} = {ex.output_value}")
+    lines.append("")
+    op_list = list(by_op.keys())
+    lines.append(f"The example operators are: {', '.join(quote(o) for o in op_list)}.")
+    if q_op in by_op:
+        lines.append(f"The query operator 【{q_op}】 IS among them — it appears in the "
+                     f"examples, so we infer its rule directly from those examples.")
+    else:
+        lines.append(f"The query operator 【{q_op}】 is NOT among them — it never appears "
+                     f"in the examples, so its rule is unknown; we default to concatenation.")
     lines.append("")
 
     # Show each example with concatenation check

@@ -46,6 +46,11 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+# Canonical competition answer extractor — handles literal '}' in cipher answers
+# (the naive \boxed{([^}]*)} regex truncates them).
+from narrators.investigations_to_reasoning import extract_final_answer  # noqa: E402
+
 
 # Categories where huikang's reasoners improved between 04-08 and the current
 # snapshot. Adding these to the 04-08 base is a "free" corpus extension that
@@ -103,6 +108,11 @@ def parse_args() -> argparse.Namespace:
                         "base corpus. Use this when reasoning files for a "
                         "category have been rewritten (e.g. bit_manipulation "
                         "switched to the declarative narrator format).")
+    p.add_argument("--no-status-check", action="store_true",
+                   help="Skip the status==rule_found filter when adding pids. "
+                        "Use when reasoning files come from a narrator that "
+                        "solves pids huikang's reasoner couldn't (i.e. the "
+                        "reasoning file IS the proof of solvability).")
     return p.parse_args()
 
 
@@ -178,8 +188,9 @@ def tokenize_problem(pid: str, prompts_answers: dict, reasoning_dir: str,
     prompt_text, gold_answer = prompts_answers[pid]
     reasoning_text = reasoning_path.read_text().rstrip("\n")
 
-    boxed = re.findall(r"\\boxed\{([^}]*)\}", reasoning_text)
-    reasoning_answer = boxed[-1] if boxed else gold_answer
+    reasoning_answer = extract_final_answer(reasoning_text)
+    if reasoning_answer == "NOT_FOUND":
+        reasoning_answer = gold_answer
     completion_text = (
         f"{reasoning_text}\n</think>\n\\boxed{{{reasoning_answer}}}<|im_end|>"
     )
@@ -254,10 +265,13 @@ def main() -> None:
         and pid in prompts_answers
     }
 
-    # New (non-base) candidates: rule_found, in add_cats, has reasoning.
+    # New (non-base) candidates: in add_cats, has reasoning. Optionally also
+    # require huikang's rule_found status (the default — preserves old
+    # behaviour for incremental corpus extensions). Pass --no-status-check
+    # when the reasoning file itself is the source of truth.
     new_candidates = sorted(
         pid for pid, p in problems.items()
-        if p.get("status") == "rule_found"
+        if (args.no_status_check or p.get("status") == "rule_found")
         and p.get("category") in add_cats
         and pid not in base_pids
         and pid in prompts_answers

@@ -24,6 +24,25 @@ CONCAT = {"concat_fwd": (0, 1, 3, 4), "concat_rev": (3, 4, 0, 1),
           "concat_fwd_ro": (1, 0, 4, 3), "concat_rev_ro": (4, 3, 1, 0)}
 POOL = list(ADD_FAM) + list(MUL_FAM) + sorted(SUB_FAM) + list(EXTRA_OPS) + list(CONCAT)
 
+# Step trace: flag-guarded, additive, zero effect on solving. When _TRACE_ON,
+# every domain change (column projection, alldiff strike/pin) appends a line, so
+# the narrator can render the FULL derivation instead of asserting the cipher.
+_TRACE = []
+_TRACE_ON = False
+
+
+def _t(line):
+    if _TRACE_ON:
+        _TRACE.append(line)
+
+
+def _fmt(dset):
+    return "".join(str(d) for d in sorted(dset))
+
+
+def _doff(d):
+    return "" if d == 0 else (f"+{d}" if d > 0 else f"{d}")
+
 def op_value(op, L, R):
     if op in ADD_FAM: return L + R + ADD_FAM[op]
     if op in MUL_FAM: return L * R + MUL_FAM[op]
@@ -87,7 +106,7 @@ def stage1_char(opchar, exlist, opchars):
 # ---------------- no-branch propagator ----------------
 class Dead(Exception): pass
 
-def project_column(domains, pinned, col_syms, rel, cin_set):
+def project_column(domains, pinned, col_syms, rel, cin_set, ctx=None):
     """col_syms: list of (role) symbols participating; rel(digit_tuple, cin)->
     (ok, cout). Enumerate domain product with alldiff; returns per-sym supports,
     cout set. Counts as ONE column constraint application."""
@@ -114,7 +133,10 @@ def project_column(domains, pinned, col_syms, rel, cin_set):
     for s in uniq:
         nd = domains[s] & sup[s]
         if not nd: raise Dead
-        if nd != domains[s]: domains[s] = nd; changed = True
+        if nd != domains[s]:
+            if _TRACE_ON and ctx is not None:
+                _t(f"  {ctx}: {s} {{{_fmt(domains[s])}}} -> {{{_fmt(nd)}}}")
+            domains[s] = nd; changed = True
     return changed, couts
 
 def apply_alldiff(domains, steps):
@@ -133,6 +155,11 @@ def apply_alldiff(domains, steps):
             nd = domains[s] - set(used)
             if not nd: raise Dead
             if nd != domains[s]:
+                if _TRACE_ON:
+                    gone = sorted(set(domains[s]) - nd)
+                    by = ",".join(f"{d}={used[d]}" for d in gone if d in used)
+                    _t(f"  alldiff: {s} -/= {{{_fmt(gone)}}} (taken: {by}) -> {{{_fmt(nd)}}}"
+                       + (f"  PIN {s}={_fmt(nd)}" if len(nd) == 1 else ""))
                 domains[s] = nd; changed = True; any_change = True; steps[0] += 1
         if full:
             # digit-side: a digit possible for exactly one symbol -> pin
@@ -141,13 +168,15 @@ def apply_alldiff(domains, steps):
                 for d in domains[s]: where[d].append(s)
             for d, ss in where.items():
                 if len(ss) == 1 and len(domains[ss[0]]) > 1:
+                    if _TRACE_ON:
+                        _t(f"  alldiff: {d} is possible only for {ss[0]} -> PIN {ss[0]}={d}")
                     domains[ss[0]] = {d}; changed = True; any_change = True; steps[0] += 1
             if len(syms) == 10:
                 for d in range(10):
                     if d not in where: raise Dead
     return any_change
 
-def example_units_tens(inp, out, op, mode, domains, evars, steps, forced=None):
+def example_units_tens(inp, out, op, mode, domains, evars, steps, forced=None, exno="?"):
     """Apply single-column constraints for one numeric example. evars: persistent
     dict for this example's hidden vars ('c1' carry/borrow set, 'dir' set).
     forced: optional dict overriding hidden var sets (for the one-branch split)."""
@@ -178,7 +207,8 @@ def example_units_tens(inp, out, op, mode, domains, evars, steps, forced=None):
             u = ds[0] + ds[1] + d
             if u % 10 != ds[2]: return None
             return u // 10
-        c, c1out = project_column(domains, None, [A[1], B[1], nat[-1]], rel_u, {0})
+        c, c1out = project_column(domains, None, [A[1], B[1], nat[-1]], rel_u, {0},
+                                  ctx=f"e{exno} units: {A[1]}+{B[1]}{_doff(d)} ends in {nat[-1]}")
         ch |= c; steps[0] += c
         c1s2 = (c1s & c1out) if isinstance(c1s, set) else c1out
         if not c1s2: raise Dead
@@ -188,7 +218,8 @@ def example_units_tens(inp, out, op, mode, domains, evars, steps, forced=None):
             if t % 10 != ds[2]: return None
             co = t // 10
             return co if co in c2_allowed else None
-        c, c2out = project_column(domains, None, [A[0], B[0], nat[-2]], rel_t, c1s2)
+        c, c2out = project_column(domains, None, [A[0], B[0], nat[-2]], rel_t, c1s2,
+                                  ctx=f"e{exno} tens: {A[0]}+{B[0]}+carry ends in {nat[-2]}")
         ch |= c; steps[0] += c
         if rl >= 3:
             nd = domains[nat[-3]] & c2out
@@ -260,10 +291,29 @@ def example_units_tens(inp, out, op, mode, domains, evars, steps, forced=None):
                     for s in uniq2: tsup[s].add(asg[s])
             if ok2: sup_dirs.add(dr)
         if not sup_dirs: raise Dead
-        for s, sp in list(usup.items()) + list(tsup.items()):
+        # describe each column concretely (operands + the result digit it must hit)
+        ru = nat[-1]; rt = nat[-2] if rl >= 2 else None
+        if len(sup_dirs) == 1:
+            _d0 = next(iter(sup_dirs)); _ux, _uy = units_syms(_d0); _tx, _ty = tens_syms(_d0)
+            u_rel = f"{_ux}-{_uy} ends in {ru}"
+            t_rel = f"{_tx}-{_ty}-borrow " + (f"ends in {rt}" if rt else "= 0")
+        else:
+            u_rel = f"|{A[1]}-{B[1]}| ends in {ru}"
+            t_rel = f"|{A[0]}-{B[0]}|-borrow " + (f"ends in {rt}" if rt else "= 0")
+        for s, sp in list(usup.items()):
             nd = domains[s] & sp
             if not nd: raise Dead
-            if nd != domains[s]: domains[s] = nd; ch = True; steps[0] += 1
+            if nd != domains[s]:
+                if _TRACE_ON:
+                    _t(f"  e{exno} {op} units ({u_rel}): {s} {{{_fmt(domains[s])}}} -> {{{_fmt(nd)}}}")
+                domains[s] = nd; ch = True; steps[0] += 1
+        for s, sp in list(tsup.items()):
+            nd = domains[s] & sp
+            if not nd: raise Dead
+            if nd != domains[s]:
+                if _TRACE_ON:
+                    _t(f"  e{exno} {op} tens ({t_rel}): {s} {{{_fmt(domains[s])}}} -> {{{_fmt(nd)}}}")
+                domains[s] = nd; ch = True; steps[0] += 1
         if not forced:
             if op in ("absdiff", "neg_absdiff"): evars["dir"] = sup_dirs
             evars["c1"] = agg_b1 if agg_b1 else b1s
@@ -317,7 +367,7 @@ def propagate(exs, opchars, syms, ops, mode, max_passes=8, init=None, forced_map
                     raise Dead
                 continue
             forced = forced_map.get(k) if forced_map else None
-            ch |= example_units_tens(inp, out, op, mode, domains, evars[k], steps, forced)
+            ch |= example_units_tens(inp, out, op, mode, domains, evars[k], steps, forced, exno=k + 1)
         ch |= apply_alldiff(domains, steps)
         if not ch: break
     return domains, evars, steps[0]
