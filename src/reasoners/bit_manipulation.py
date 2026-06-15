@@ -6,33 +6,18 @@ with a strict-validity filter for candidate assignment vectors.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
-from itertools import combinations
 from typing import Dict, List, Literal, Optional, Sequence, Tuple
 
 from reasoners.store_types import Problem
 
 N_BITS = 8
 
-# Toggle the 3-input middle-fill (majority/choice + op-composition). True -> the
-# 88.5% IN-SAMPLE narrator — a known OVERFIT (only 2/60 triples forced; audit
-# 2026-06-10): keep False. Default flipped True->False so an import site that
-# forgets to set it gets the production behavior (flip verified byte-identical
-# for every current consumer). The '885' experiment config sets True explicitly.
-# NOTE: this PORT narrator is superseded by reasoners.bit_manipulation_zyx in
-# production builds (strict superset, 1454 vs 1364); kept for reference/885.
-INCLUDE_3INPUT = False
-
 SYM_FAMILIES = ("XOR", "OR", "AND")
 ASYM_FAMILIES = ("AND-NOT", "XOR-NOT", "OR-NOT")
 PAIR_FAMILIES = SYM_FAMILIES + ASYM_FAMILIES
 UNARY_FAMILIES = ("I", "NOT")
 CONSTANT_FAMILIES = ("0", "1")
-# 3-input primitives (the prompt names majority/choice). Only ever tried as a
-# middle-fill fallback for a pending bit, on the stride-derived candidate
-# positions -- never enumerated globally.
-TRIPLE_FAMILIES = ("MAJ", "CH")
 DEFAULT_FAMILY: RuleFamily = "DEFAULT"
 SECTION_ORDER = (
     "Identity",
@@ -71,9 +56,6 @@ RuleFamily = Literal[
     "AND-NOT",
     "XOR-NOT",
     "OR-NOT",
-    "MAJ",
-    "CH",
-    "COMP",
     "DEFAULT",
 ]
 
@@ -92,10 +74,6 @@ class RuleCandidate:
     secondary_offset: Optional[int] = (
         None  # secondary at bit 0: secondary = (offset + bit * stride) % 8
     )
-    tertiary: Optional[int] = None  # 3rd operand for MAJ/CH (CH: primary=selector,
-    #                                 secondary=then, tertiary=else)
-    inner_family: Optional[str] = None  # COMP: out = outer_family(inner_family(primary,
-    outer_family: Optional[str] = None  #   secondary), tertiary)  -- 2-op composition
 
     @property
     def is_default(self) -> bool:
@@ -154,77 +132,6 @@ def _apply_family(
     for x, y in zip(a_bits, b_eff):
         out.append(_evaluate_binary(x, y, family))
     return "".join(out)
-
-
-def _eval_triple(a: str, b: str, c: str, family: str) -> str:
-    """MAJ = majority(a,b,c); CH = a?b:c (a is selector, b=then, c=else)."""
-    if family == "MAJ":
-        return "1" if (int(a) + int(b) + int(c)) >= 2 else "0"
-    # CH
-    return b if a == "1" else c
-
-
-def _triple_consistent(
-    input_columns: Sequence[str], out_col: str, positions: Sequence[int]
-) -> List[RuleCandidate]:
-    """All majority/choice rules over a triple of the candidate positions whose
-    column reproduces out_col, in canonical order (positions ascending, MAJ before
-    CH, selector ascending). Bounded: <=56 triples."""
-    pos = sorted(set(p for p in positions if p is not None))
-    out: List[RuleCandidate] = []
-    for a, b, c in combinations(pos, 3):
-        ca, cb, cc = input_columns[a], input_columns[b], input_columns[c]
-        if all(_eval_triple(x, y, z, "MAJ") == o for x, y, z, o in zip(ca, cb, cc, out_col)):
-            out.append(RuleCandidate("MAJ", a, b, f"MAJ{a}{b}{c}", tertiary=c))
-        for sel in (a, b, c):
-            rest = [p for p in (a, b, c) if p != sel]
-            for x, y in (rest, rest[::-1]):
-                cs, cx, cy = input_columns[sel], input_columns[x], input_columns[y]
-                if all(_eval_triple(s, xx, yy, "CH") == o for s, xx, yy, o in zip(cs, cx, cy, out_col)):
-                    out.append(RuleCandidate("CH", sel, x, f"CH{sel}{x}{y}", tertiary=y))
-    return out
-
-
-def _find_triple_forced(
-    input_columns: Sequence[str], out_col: str, positions: Sequence[int], question_bits: str
-) -> Optional[RuleCandidate]:
-    """Return the canonical majority/choice rule ONLY if every triple consistent
-    with the examples agrees on the query bit (uniquely determined). Otherwise the
-    bit is genuinely ambiguous -> return None and leave it to the default, so we
-    never guess a consistent-but-wrong rule."""
-    cands = _triple_consistent(input_columns, out_col, positions)
-    if not cands:
-        return None
-    if len({_evaluate_rule(question_bits, c) for c in cands}) == 1:
-        return cands[0]
-    return None
-
-
-def _op_val(op: str, x: str, y: str) -> str:
-    """Apply a (possibly -NOT) binary op to two bit values."""
-    yy = _bit_not(y) if op.endswith("-NOT") else y
-    return _evaluate_binary(x, yy, op)
-
-
-def _comp_from_run(run: "List[RuleCandidate]", run_start: int, bit: int,
-                   input_columns: Sequence[str], out_col: str) -> Optional[RuleCandidate]:
-    """Op-composition fill: the run is the INNER pair (T1 op1 T2) read off where the
-    3rd transform shifts out. Extrapolate it to this bit, then exhaustively test the
-    OUTER op + 3rd operand: (inner) op2 in[c], 6 ops x 8 positions = 48 bounded tests.
-    Returns the first consistent ((T1 op1 T2) op2 T3) rule."""
-    if not run or run[0].family not in PAIR_FAMILIES:
-        return None
-    r = run[0]
-    a = (r.primary - run_start + bit) % N_BITS
-    b = (r.secondary - run_start + bit) % N_BITS
-    op1 = r.family
-    inner = [_op_val(op1, input_columns[a][e], input_columns[b][e]) for e in range(len(out_col))]
-    for op2 in PAIR_FAMILIES:
-        for c in range(N_BITS):
-            if all(_op_val(op2, inner[e], input_columns[c][e]) == out_col[e] for e in range(len(out_col))):
-                return RuleCandidate("COMP", a, b, f"({op1}{a}{b}){op2}{c}",
-                                     tertiary=c, inner_family=op1, outer_family=op2)
-    return None
 
 
 def _find_match(
@@ -419,13 +326,6 @@ def _evaluate_rule(bits: str, rule: RuleCandidate) -> str:
         if "-NOT" in rule.family:
             b = _bit_not(b)
         return _evaluate_binary(a, b, rule.family)
-    if rule.family in TRIPLE_FAMILIES:
-        assert rule.primary is not None and rule.secondary is not None and rule.tertiary is not None
-        return _eval_triple(bits[rule.primary], bits[rule.secondary], bits[rule.tertiary], rule.family)
-    if rule.family == "COMP":
-        assert rule.inner_family is not None and rule.outer_family is not None
-        inner = _op_val(rule.inner_family, bits[rule.primary], bits[rule.secondary])
-        return _op_val(rule.outer_family, inner, bits[rule.tertiary])
     raise ValueError(f"Unknown family {rule.family}")
 
 
@@ -461,31 +361,6 @@ def _emit_apply(
             lines.append(f"{i} {rule.expr} = NOT({val}) = {nval}")
             answer_bits.append(nval)
             continue
-        if rule.family in TRIPLE_FAMILIES:
-            assert rule.primary is not None and rule.secondary is not None and rule.tertiary is not None
-            va = question_bits[rule.primary]
-            vb = question_bits[rule.secondary]
-            vc = question_bits[rule.tertiary]
-            result = _evaluate_rule(question_bits, rule)
-            if rule.family == "MAJ":
-                lines.append(f"{i} {rule.expr} = MAJ({va},{vb},{vc}) = {result}")
-            else:
-                lines.append(f"{i} {rule.expr} = ({va}?{vb}:{vc}) = {result}")
-            answer_bits.append(result)
-            continue
-        if rule.family == "COMP":
-            va = question_bits[rule.primary]
-            vb = question_bits[rule.secondary]
-            vc = question_bits[rule.tertiary]
-            inner = _op_val(rule.inner_family, va, vb)
-            result = _op_val(rule.outer_family, inner, vc)
-            ib = rule.inner_family.split("-")[0]
-            ob = rule.outer_family.split("-")[0]
-            vbn = _bit_not(vb) if rule.inner_family.endswith("-NOT") else vb
-            vcn = _bit_not(vc) if rule.outer_family.endswith("-NOT") else vc
-            lines.append(f"{i} {rule.expr} = {ob}({ib}({va},{vbn})={inner}, {vcn}) = {result}")
-            answer_bits.append(result)
-            continue
 
         assert rule.primary is not None and rule.secondary is not None
         a = question_bits[rule.primary]
@@ -498,10 +373,7 @@ def _emit_apply(
 
         base = rule.family.split("-")[0]
         result = _evaluate_rule(question_bits, rule)
-        nb = _bit_not(b)
-        # split the negation into its own step (NOT(b) resolved before the binary op)
-        # -- the eval showed the model drops the NOT when AND(a,NOT(b)) is one token.
-        lines.append(f"{i} {rule.expr} = {base}({a},NOT({b})) = {base}({a},{nb}) = {result}")
+        lines.append(f"{i} {rule.expr} = {base}({a},NOT({b})) = {result}")
         answer_bits.append(result)
 
     lines.append("")
@@ -1117,94 +989,6 @@ def reasoning_bit_manipulation(problem: Problem) -> Optional[str]:
         else:
             lines.append(f"{i} {best[i].expr}")
     lines.append("")
-
-    # 3-input fill (the +3.4pp): a still-default bit may be majority/choice or an
-    # op-composition of THREE transforms; its component positions are revealed by the
-    # stride runs. Toggle with INCLUDE_3INPUT (off -> baseline 85.1%; on -> 88.5%).
-    # The found rule is stated (the bounded <=56-test search is not narrated -- this
-    # is the one small assert pocket in an otherwise fully-mechanical narrator).
-    if INCLUDE_3INPUT:
-        def _chain_positions_at(chain: List[RuleCandidate], run_start_bit: int, bit: int, acc: set) -> None:
-            if not chain:
-                return
-            r = chain[0]
-            if r.primary is not None:
-                acc.add(((r.primary - run_start_bit) % N_BITS + bit) % N_BITS)
-            if r.secondary is not None:
-                acc.add(((r.secondary - run_start_bit) % N_BITS + bit) % N_BITS)
-
-        def _candidate_positions(bit: int) -> List[int]:
-            acc: set = set()
-            for name in SECTION_ORDER:
-                pm = all_matches[name]
-                lr = _find_all_left_runs(pm)
-                if lr:
-                    _chain_positions_at(max(lr, key=lambda t: len(t[0]))[0], 0, bit, acc)
-                rr = _find_all_right_runs(pm)
-                if rr:
-                    ch = max(rr, key=lambda t: len(t[0]))[0]
-                    _chain_positions_at(ch, N_BITS - len(ch), bit, acc)
-            return sorted(acc)
-
-        inner_runs = [(left_run, 0), (right_run, right_start_final)]
-        still_default = [i for i in pending_indices if best[i].is_default]
-        triple_lines: list[str] = []
-        for i in still_default:
-            cand = None
-            for run, start in inner_runs:
-                cand = _comp_from_run(run, start, i, input_columns, output_columns[i])
-                if cand is not None:
-                    break
-            if cand is None:
-                cands = _triple_consistent(input_columns, output_columns[i], _candidate_positions(i))
-                if not cands:
-                    cands = _triple_consistent(input_columns, output_columns[i], list(range(N_BITS)))
-                cand = cands[0] if cands else None
-            if cand is not None:
-                best[i] = cand
-                triple_lines.append(f"{i} {cand.expr}")
-            else:
-                triple_lines.append(f"{i} none")
-        if any(not tl.endswith("none") for tl in triple_lines):
-            lines.append("Triple (composition / majority / choice)")
-            for tl in triple_lines:
-                lines.append(tl)
-            lines.append("")
-
-    # Determinability fallback (honest, before default 1): for any bit still
-    # defaulted, search EVERY family that fits the column across all examples
-    # (ungated by the stride-preferred operands the matching step uses). If the
-    # fitting families UNANIMOUSLY agree on the query bit, the bit is uniquely
-    # determined -> derive the simplest such family (the full search + agreement is
-    # shown). If they disagree (or none fit), the bit is genuinely under-determined
-    # -> keep the consistent `default 1`. Answer-blind: gold is never consulted; the
-    # external keep/drop filter is unchanged.
-    # OFF by default: the +7 it recovers (1364->1371) are excluded so the solvable
-    # set and the synth target (bit_real_dist.json, mined from the 1364 huikang set)
-    # stay consistent. Set BIT_DETERMINABILITY_FALLBACK=1 to re-enable.
-    fb_lines: List[str] = []
-    if os.environ.get("BIT_DETERMINABILITY_FALLBACK"):
-        for i in range(N_BITS):
-            if not best[i].is_default:
-                continue
-            full = [c for name in SECTION_ORDER for c in all_matches[name][i]]
-            if not full:
-                fb_lines.append(f"{i} no family fits -> default 1")
-                continue
-            qvals = {_evaluate_rule(question_bits, c) for c in full}
-            if len(qvals) == 1:
-                best[i] = full[0]  # SECTION_ORDER is priority order -> simplest determining family
-                fb_lines.append(
-                    f"{i} fits {' '.join(c.expr for c in full)} -> all give "
-                    f"{next(iter(qvals))}; determined = {best[i].expr}")
-            else:
-                fb_lines.append(
-                    f"{i} fits {' '.join(c.expr for c in full)} -> disagree "
-                    f"{sorted(qvals)}; under-determined -> default 1")
-    if fb_lines:
-        lines.append("Default-bit determinability check")
-        lines.extend(fb_lines)
-        lines.append("")
 
     # Check if we have any non-default rules
     if all(r.is_default for r in best):
